@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  VOTER
+}
+
+model User {
+  id             String    @id @default(uuid())
+  nim            String    @unique
+  name           String
+  randomPassword String    @map("random_password")
+  role           Role      @default(VOTER)
+  hasVoted       Boolean   @default(false) @map("has_voted")
+  votedAt        DateTime? @map("voted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Candidate {
+  id                Int      @id @default(autoincrement())
+  candidateNumber   Int      @unique @map("candidate_number")
+  chairmanName      String   @default("") @map("chairman_name")
+  viceChairmanName  String   @default("") @map("vice_chairman_name")
+  name              String   @map("name")
+  chairmanPhoto     String?  @map("chairman_photo")
+  viceChairmanPhoto String?  @map("vice_chairman_photo")
+  photoUrl          String?  @map("photo_url")
+  vision            String   @default("") @db.Text
+  mission           String   @default("") @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("candidates")
+}
+
+model Vote {
+  id          String   @id @default(uuid())
+  candidateId Int?     @map("candidate_id")
+  isValid     Boolean  @default(true) @map("is_valid")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("votes")
+}
+
+model Setting {
+  id        String   @id @default("default")
+  appName   String   @default("E-VOTINGKU SYSTEM") @map("app_name")
+  subTitle  String   @default("Sistem E-Voting TPS Lokal & Anonim") @map("sub_title")
+  logoUrl   String?  @map("logo_url")
+  bannerUrl String?  @map("banner_url")
+  kopUrl    String?  @map("kop_url") @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // LOGIN_SUCCESS, LOGIN_FAILED, VOTE_CAST, VOTER_ADDED, VOTER_DELETED, etc.
+  actor     String   // nim pemilih atau 'admin'
+  ipAddress String?  @map("ip_address")
+  details   String?  // JSON string dengan detail tambahan
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
