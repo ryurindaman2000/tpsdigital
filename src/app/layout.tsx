@@ -31,10 +31,10 @@ export const metadata: Metadata = {
     siteName: 'TPS-DIGITAL E-Voting',
     images: [
       {
-        url: '/images/default-banner.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'TPS-DIGITAL E-Voting System Banner',
+        url: '/images/default-logo.png',
+        width: 512,
+        height: 512,
+        alt: 'TPS-DIGITAL Logo',
       },
     ],
     locale: 'id_ID',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     title: 'TPS-DIGITAL — Sistem E-Voting Terenkripsi & Transparan',
     description:
       'Sistem Pemilihan Umum E-Voting Modern dengan Rekapitulasi Quick Count Real-Time & Audit Log Terenkripsi.',
-    images: ['/images/default-banner.jpg'],
+    images: ['/images/default-logo.png'],
     creator: '@pancakalabs',
   },
   robots: {
