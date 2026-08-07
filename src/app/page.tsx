@@ -25,11 +25,11 @@ export default function VoterLoginPage() {
   useEffect(() => {
     const timer1 = setTimeout(() => {
       setSplashFading(true);
-    }, 800);
+    }, 2000);
 
     const timer2 = setTimeout(() => {
       setShowSplash(false);
-    }, 1200);
+    }, 2500);
 
     return () => {
       clearTimeout(timer1);
