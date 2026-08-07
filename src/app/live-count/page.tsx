@@ -330,11 +330,19 @@ export default function LiveCountPage() {
               })}
             </div>
           )}
+        {/* Tombol Highlight Card: Kembali ke Halaman Login (di atas Footer) */}
+        <div className="mt-8">
+          <Link
+            href="/"
+            className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-600/30 tracking-wide uppercase group animate-pulse hover:animate-none"
+          >
+            <span>← Kembali ke Halaman Utama / Login Pemilih</span>
+          </Link>
         </div>
       </main>
 
       {/* Footer Security */}
-      <footer className="max-w-7xl mx-auto w-full text-center py-4 text-xs text-slate-500 flex justify-between items-center flex-wrap gap-2 px-6">
+      <footer className="max-w-7xl mx-auto w-full text-center py-6 text-xs text-slate-500 flex justify-center items-center px-6 border-t border-slate-200/60 mt-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span>
@@ -349,13 +357,6 @@ export default function LiveCountPage() {
             </a>
           </span>
         </div>
-        <Link
-          href="/"
-          className="text-emerald-600 hover:underline font-semibold flex items-center gap-1"
-        >
-          <span>Kembali ke Halaman Login</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
       </footer>
     </div>
   );
