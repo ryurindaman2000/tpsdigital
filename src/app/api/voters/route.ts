@@ -208,22 +208,46 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Hapus data DPT dari tabel User
+    // 1. Ambil data voters yang akan dihapus untuk memeriksa apakah mereka sudah memilih & memiliki timestamp votedAt
+    const targetVoters = await db.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, hasVoted: true, votedAt: true },
+    });
+
+    // Kumpulkan timestamp votedAt dari voters yang dihapus
+    const votedTimestamps = targetVoters
+      .filter((v) => v.hasVoted && v.votedAt)
+      .map((v) => v.votedAt!);
+
+    // 2. Hapus baris di tabel votes yang timestamp createdAt-nya cocok (relasi timestamp votedAt)
+    if (votedTimestamps.length > 0) {
+      await Promise.all(
+        votedTimestamps.map(async (time) => {
+          // Cari & hapus vote yang memiliki selisih rentang waktu (±2 detik) dengan votedAt voter
+          const startTime = new Date(time.getTime() - 2000);
+          const endTime = new Date(time.getTime() + 2000);
+
+          await db.vote.deleteMany({
+            where: {
+              createdAt: {
+                gte: startTime,
+                lte: endTime,
+              },
+            },
+          });
+        })
+      );
+    }
+
+    // 3. Hapus data DPT dari tabel User
     await db.user.deleteMany({
       where: { id: { in: ids } },
     });
 
-    // Cek sisa voter aktif di database. Jika seluruh DPT atau voter dihapus, bersihkan juga isi tabel votes
+    // 4. Jika seluruh voter dihapus atau ada ketidakseimbangan sisa, bersihkan tabel votes
     const remainingVoters = await db.user.count({ where: { role: 'VOTER' } });
     if (remainingVoters === 0) {
       await db.vote.deleteMany({});
-    } else {
-      // Jika penghapusan spesifik voter, hapus record vote agar statistik suara masuk selalu sinkron 100%
-      const totalVotedUsers = await db.user.count({ where: { role: 'VOTER', hasVoted: true } });
-      const currentVoteRecords = await db.vote.count();
-      if (totalVotedUsers === 0 || currentVoteRecords > totalVotedUsers) {
-        await db.vote.deleteMany({});
-      }
     }
 
     // Catat audit log
