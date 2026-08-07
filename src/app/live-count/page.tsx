@@ -177,8 +177,8 @@ export default function LiveCountPage() {
           )}
         </div>
 
-        {/* 4 Cards Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 3 Cards Summary (Presisi Tanpa Suara Kosong/Abstain) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-2 shadow-md">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Hak Pilih</span>
             <div className="text-3xl font-black text-slate-900">{stats.totalVoters}</div>
@@ -200,12 +200,6 @@ export default function LiveCountPage() {
                 style={{ width: stats.turnoutPercent }}
               />
             </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 p-5 rounded-2xl space-y-2 shadow-md">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Abstain / Suara Kosong</span>
-            <div className="text-3xl font-black text-amber-600">{stats.abstainCount}</div>
-            <p className="text-xs text-slate-500">Suara Tidak Sah / Abstain</p>
           </div>
         </div>
 
