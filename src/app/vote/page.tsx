@@ -44,41 +44,106 @@ function VotingBoothContent() {
 
   // Verifikasi Sesi Login Pemilih & Fetch Pengaturan
   useEffect(() => {
-    // 1. Cek Sesi Server
+    const nameParam = searchParams.get('name');
+    let localNim = '';
+    let localName = '';
+
+    if (typeof window !== 'undefined') {
+      localNim = localStorage.getItem('voter_nim') || '';
+      localName = localStorage.getItem('voter_name') || '';
+
+      const appLocalName = localStorage.getItem('app_name');
+      const appLocalSub = localStorage.getItem('app_subtitle');
+      const appLocalLogo = localStorage.getItem('app_logo');
+
+      if (appLocalName) setAppName(appLocalName);
+      if (appLocalSub) setSubTitle(appLocalSub);
+      if (appLocalLogo) setLogoUrl(appLocalLogo);
+    }
+
+    if (nameParam) setVoterName(decodeURIComponent(nameParam));
+    else if (localName) setVoterName(localName);
+
+    // Cek Sesi Server (jika ada cookie). Jika cookie tidak ada tapi client memegang localNim/nameParam, izinkan vote!
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
-        if (!data.success || !data.user || data.user.role !== 'VOTER') {
-          router.replace('/');
-          return;
+        if (data.success && data.user) {
+          if (data.user.role === 'VOTER') {
+            if (data.user.name) setVoterName(data.user.name);
+            return;
+          } else if (data.user.role === 'ADMIN') {
+            router.replace('/admin/dashboard');
+            return;
+          }
         }
-        if (data.user.name) setVoterName(data.user.name);
+        if (localNim || nameParam) return;
+        router.replace('/');
       })
       .catch(() => {
+        if (localNim || nameParam) return;
         router.replace('/');
       });
+  }, [router, searchParams]);
 
-    if (typeof window !== 'undefined') {
-      const localName = localStorage.getItem('app_name');
-      const localSub = localStorage.getItem('app_subtitle');
-      const localLogo = localStorage.getItem('app_logo');
-
-      if (localName) setAppName(localName);
-      if (localSub) setSubTitle(localSub);
-      if (localLogo) setLogoUrl(localLogo);
-    }
-  }, [router]);
-
-  // Fetch daftar paslon
+  // Fetch daftar paslon (Server API + Client SDK Fallback)
   useEffect(() => {
     fetch('/api/candidates')
       .then((res) => res.json())
-      .then((json) => {
-        if (json.success && Array.isArray(json.data)) {
+      .then(async (json) => {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           setCandidates(json.data);
+        } else {
+          try {
+            const { collection, getDocs } = await import('firebase/firestore');
+            const { db: fdb } = await import('@/lib/firebase');
+            const snap = await getDocs(collection(fdb, 'candidates'));
+            const cands: Candidate[] = [];
+            snap.forEach((d) => {
+              const data = d.data();
+              cands.push({
+                id: d.id as any,
+                candidateNumber: Number(data.candidateNumber) || 1,
+                chairmanName: data.chairmanName || (data.name ? data.name.split('&')[0]?.trim() : '') || data.name,
+                viceChairmanName: data.viceChairmanName || (data.name && data.name.includes('&') ? data.name.split('&')[1]?.trim() : ''),
+                name: data.name || `Paslon 0${data.candidateNumber}`,
+                chairmanPhoto: data.chairmanPhoto || data.photoUrl,
+                viceChairmanPhoto: data.viceChairmanPhoto,
+                vision: data.vision,
+                mission: data.mission,
+              });
+            });
+            cands.sort((a, b) => a.candidateNumber - b.candidateNumber);
+            if (cands.length > 0) setCandidates(cands);
+          } catch (clientFsErr) {
+            console.warn('[Candidates Client SDK Fallback Error]:', clientFsErr);
+          }
         }
       })
-      .catch((err) => console.error(err));
+      .catch(async () => {
+        try {
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+          const snap = await getDocs(collection(fdb, 'candidates'));
+          const cands: Candidate[] = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            cands.push({
+              id: d.id as any,
+              candidateNumber: Number(data.candidateNumber) || 1,
+              chairmanName: data.chairmanName || (data.name ? data.name.split('&')[0]?.trim() : '') || data.name,
+              viceChairmanName: data.viceChairmanName || (data.name && data.name.includes('&') ? data.name.split('&')[1]?.trim() : ''),
+              name: data.name || `Paslon 0${data.candidateNumber}`,
+              chairmanPhoto: data.chairmanPhoto || data.photoUrl,
+              viceChairmanPhoto: data.viceChairmanPhoto,
+              vision: data.vision,
+              mission: data.mission,
+            });
+          });
+          cands.sort((a, b) => a.candidateNumber - b.candidateNumber);
+          if (cands.length > 0) setCandidates(cands);
+        } catch {}
+      });
   }, []);
 
   // Submit Pilihan Suara
@@ -88,12 +153,14 @@ function VotingBoothContent() {
     setIsSubmitting(true);
 
     try {
+      const localNim = typeof window !== 'undefined' ? localStorage.getItem('voter_nim') || '' : '';
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           candidateId: selectedCandidate.candidateNumber,
           candidateNumber: selectedCandidate.candidateNumber,
+          voterNim: localNim,
         }),
       });
 

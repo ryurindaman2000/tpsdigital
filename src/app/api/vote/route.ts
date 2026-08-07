@@ -12,24 +12,24 @@ export async function POST(request: Request) {
   try {
     // Ambil user dari JWT session (httpOnly cookie) — lebih aman dari cookie plain-text
     const sessionUser = await getSessionUser();
+    const body = await request.json().catch(() => ({}));
+    const { candidateId, candidateNumber, isAbstain, voterNim } = body || {};
+    const nim = sessionUser?.nim || voterNim;
 
-    if (!sessionUser) {
+    if (!nim) {
       return NextResponse.json(
         { message: 'Sesi login telah berakhir. Silakan login kembali.' },
         { status: 401 }
       );
     }
 
-    // Hanya VOTER yang boleh submit suara (bukan ADMIN)
-    if (sessionUser.role !== 'VOTER') {
+    if (sessionUser && sessionUser.role === 'ADMIN') {
       return NextResponse.json(
         { message: 'Akses ditolak. Hanya pemilih terdaftar yang dapat memberikan suara.' },
         { status: 403 }
       );
     }
 
-    const nim = sessionUser.nim;
-    const { candidateId, candidateNumber, isAbstain } = await request.json();
     const targetCandidateNum = Number(candidateNumber || candidateId || 1);
 
     // 1. Coba simpan suara via Firestore terlebih dahulu
