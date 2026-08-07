@@ -135,19 +135,51 @@ export default function AdminCandidatesPage() {
     setIsModalOpen(true);
   };
 
-  // Convert File to Base64
+  // Convert File to Compressed Web-Ready Base64 (Maks 600px, Super Ringan ~30KB)
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: string | null) => void
   ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result as string);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600;
+        const MAX_HEIGHT = 750;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // Kompresi ke format JPEG dengan kualitas 75%
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+          setter(compressedBase64);
+        } else {
+          setter(event.target?.result as string);
+        }
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Simpan atau Update Candidate
@@ -204,26 +236,37 @@ export default function AdminCandidatesPage() {
     }
   };
 
-  // Hapus Candidate
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Hapus Candidate (Optimistic UI - Respon Instan Seketika)
   const handleDeleteCandidate = async () => {
-    if (!deletingCandidate) return;
+    if (!deletingCandidate || isDeleting) return;
+    setIsDeleting(true);
+
+    const targetId = deletingCandidate.id;
+
+    // 1. Instan Hapus dari UI layar (< 10ms)
+    setCandidates((prev) => prev.filter((c) => c.id !== targetId));
+    setIsDeleteModalOpen(false);
 
     try {
       const res = await fetch('/api/candidates', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deletingCandidate.id }),
+        body: JSON.stringify({ id: targetId }),
       });
 
-      if (res.ok) {
-        setIsDeleteModalOpen(false);
-        setDeletingCandidate(null);
+      if (!res.ok) {
+        // Jika server gagal, kembalikan data dan refresh
         fetchCandidatesData();
-      } else {
-        alert('Gagal menghapus kandidat.');
+        alert('Gagal menghapus kandidat dari database.');
       }
     } catch (err) {
+      fetchCandidatesData();
       alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingCandidate(null);
     }
   };
 
@@ -612,16 +655,21 @@ export default function AdminCandidatesPage() {
 
             <div className="flex gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200"
+                disabled={isDeleting}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200 disabled:opacity-50"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleDeleteCandidate}
-                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-red-600/20"
+                disabled={isDeleting}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-red-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Hapus Permanent
+                {isDeleting && <LoaderCircle className="w-3.5 h-3.5 animate-spin" />}
+                <span>{isDeleting ? 'Menghapus...' : 'Hapus Permanent'}</span>
               </button>
             </div>
           </div>

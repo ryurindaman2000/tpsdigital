@@ -49,11 +49,11 @@ export default function AdminDashboardPage() {
   };
 
   const handleOpenBeritaAcaraModal = async () => {
-    if (isOpeningBeritaAcara) return;
-    setIsOpeningBeritaAcara(true);
+    // 1. Langsung buka modal seketika (INSTANT RESPONSE < 10ms)
+    setIsBeritaAcaraModalOpen(true);
 
     try {
-      // Fetch settings & candidates secara PARALEL untuk respon instan
+      // 2. Refresh data terbaru di background
       const [settingsRes, candidatesRes] = await Promise.all([
         fetch('/api/settings'),
         fetch('/api/candidates'),
@@ -80,20 +80,9 @@ export default function AdminDashboardPage() {
           votesCount: c.votesCount || c._count?.votes || 0,
         }));
         setCandidatesList(mapped);
-      } else {
-        setCandidatesList([
-          { id: 1, candidateNumber: 1, chairmanName: 'Pasangan Calon 01', viceChairmanName: '', votesCount: 0 },
-          { id: 2, candidateNumber: 2, chairmanName: 'Pasangan Calon 02', viceChairmanName: '', votesCount: 0 },
-        ]);
       }
     } catch (e) {
-      setCandidatesList([
-        { id: 1, candidateNumber: 1, chairmanName: 'Pasangan Calon 01', viceChairmanName: '', votesCount: 0 },
-        { id: 2, candidateNumber: 2, chairmanName: 'Pasangan Calon 02', viceChairmanName: '', votesCount: 0 },
-      ]);
-    } finally {
-      setIsOpeningBeritaAcara(false);
-      setIsBeritaAcaraModalOpen(true);
+      console.error(e);
     }
   };
 
@@ -497,31 +486,25 @@ export default function AdminDashboardPage() {
               </span>
             </Link>
 
-            {/* Card 3: Cetak Berita Acara TPS (Langsung Pop-up Modal) */}
+            {/* Card 3: Cetak Berita Acara TPS (Langsung Pop-up Modal Instan) */}
             <button
               type="button"
               onClick={handleOpenBeritaAcaraModal}
-              disabled={isOpeningBeritaAcara}
-              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition group shadow-md text-left cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition group shadow-md text-left cursor-pointer"
             >
               <div className="space-y-3">
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-600 w-fit flex items-center justify-center">
-                  {isOpeningBeritaAcara ? (
-                    <LoaderCircle className="w-6 h-6 animate-spin text-amber-600" />
-                  ) : (
-                    <FileText className="w-6 h-6" />
-                  )}
+                  <FileText className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition flex items-center gap-2">
-                  <span>Cetak Berita Acara TPS</span>
-                  {isOpeningBeritaAcara && <span className="text-xs text-amber-600 font-normal animate-pulse">(Memuat Data...)</span>}
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition">
+                  Cetak Berita Acara TPS
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Generasi dokumen resmi Berita Acara Rekapitulasi Perhitungan Suara TPS lengkap dengan Tanda Tangan Saksi.
                 </p>
               </div>
               <span className="text-xs font-semibold text-emerald-600 mt-6 inline-flex items-center gap-1 group-hover:translate-x-1 transition">
-                {isOpeningBeritaAcara ? 'Memuat Data...' : 'Cetak Berita Acara →'}
+                Cetak Berita Acara →
               </span>
             </button>
 
