@@ -42,8 +42,8 @@ export default function AdminCandidatesPage() {
   const fetchCandidatesData = async () => {
     try {
       const [settingsRes, candidatesRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/candidates'),
+        fetch('/api/settings', { cache: 'no-store' }),
+        fetch('/api/candidates', { cache: 'no-store' }),
       ]);
 
       const [settingsJson, candidatesJson] = await Promise.all([
