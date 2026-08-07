@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Akun admin berhasil diperbarui di database Supabase! Gunakan username & password baru untuk login.',
+      message: 'Akun admin berhasil diperbarui di database! Gunakan username & password baru untuk login.',
       username: updatedUsername,
     });
   } catch (error: any) {

@@ -203,38 +203,62 @@ export default function LiveCountPage() {
               Belum ada data suara masuk atau paslon belum ditambahkan oleh Admin.
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {candidateVotes.map((paslon) => {
                 const displayName = paslon.chairmanName && paslon.viceChairmanName
                   ? `${paslon.chairmanName} & ${paslon.viceChairmanName}`
-                  : paslon.name;
+                  : paslon.chairmanName || paslon.name || `Paslon 0${paslon.candidateNumber}`;
 
                 return (
                   <div
                     key={paslon.id}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm hover:shadow-md transition"
+                    className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition"
                   >
                     {/* Header Badge Paslon */}
-                    <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="px-3.5 py-1 bg-emerald-600 text-white font-black rounded-xl text-xs shadow-sm tracking-wide">
-                          PASLON 0{paslon.candidateNumber}
-                        </span>
-                        <h4 className="text-sm font-bold text-slate-900">{displayName}</h4>
-                      </div>
+                    <div className="flex flex-col items-center text-center border-b border-slate-200/80 pb-3 gap-1.5">
+                      <span className="px-3.5 py-1 bg-emerald-600 text-white font-black rounded-xl text-xs shadow-sm tracking-wide">
+                        PASLON 0{paslon.candidateNumber}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 line-clamp-2">{displayName}</h4>
                     </div>
 
-                    {/* Grid Content: Foto Pasangan + Card Persentase + Card Jumlah Suara */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                      {/* 1. Foto Pasangan Ketua & Wakil Calon */}
-                      <div className="md:col-span-6 flex items-center justify-start gap-4">
-                        {/* Foto Ketua Calon */}
+                    {/* Foto Pasangan Ketua & Wakil Calon */}
+                    <div className="flex items-center justify-center gap-3 py-1">
+                      {/* Foto Ketua Calon */}
+                      <div className="flex flex-col items-center text-center">
+                        <div className="w-20 h-24 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
+                          {paslon.chairmanPhoto || paslon.photoUrl ? (
+                            <img
+                              src={paslon.chairmanPhoto || paslon.photoUrl!}
+                              alt={paslon.chairmanName || 'Calon Ketua'}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover rounded-xl"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
+                              <User className="w-8 h-8" />
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
+                          Calon Ketua
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[90px]">
+                          {paslon.chairmanName || `Paslon 0${paslon.candidateNumber}`}
+                        </span>
+                      </div>
+
+                      {/* Foto Wakil Calon */}
+                      {(paslon.viceChairmanPhoto || paslon.viceChairmanName) && (
                         <div className="flex flex-col items-center text-center">
-                          <div className="w-20 h-24 sm:w-24 sm:h-28 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
-                            {paslon.chairmanPhoto || paslon.photoUrl ? (
+                          <div className="w-20 h-24 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
+                            {paslon.viceChairmanPhoto ? (
                               <img
-                                src={paslon.chairmanPhoto || paslon.photoUrl!}
-                                alt={paslon.chairmanName || 'Calon Ketua'}
+                                src={paslon.viceChairmanPhoto}
+                                alt={paslon.viceChairmanName || 'Calon Wakil'}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover rounded-xl"
                               />
                             ) : (
@@ -244,48 +268,26 @@ export default function LiveCountPage() {
                             )}
                           </div>
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
-                            Calon Ketua
+                            Calon Wakil
                           </span>
-                          <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[100px]">
-                            {paslon.chairmanName || `Paslon 0${paslon.candidateNumber}`}
+                          <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[90px]">
+                            {paslon.viceChairmanName || '-'}
                           </span>
                         </div>
+                      )}
+                    </div>
 
-                        {/* Foto Wakil Calon */}
-                        {(paslon.viceChairmanPhoto || paslon.viceChairmanName) && (
-                          <div className="flex flex-col items-center text-center">
-                            <div className="w-20 h-24 sm:w-24 sm:h-28 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
-                              {paslon.viceChairmanPhoto ? (
-                                <img
-                                  src={paslon.viceChairmanPhoto}
-                                  alt={paslon.viceChairmanName || 'Calon Wakil'}
-                                  className="w-full h-full object-cover rounded-xl"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                                  <User className="w-8 h-8" />
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
-                              Calon Wakil
-                            </span>
-                            <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[100px]">
-                              {paslon.viceChairmanName || '-'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 2. Card Persentase Suara */}
-                      <div className="md:col-span-3 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-center flex flex-col justify-center space-y-1.5 h-full min-h-[90px]">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          Persentase Suara
+                    {/* Stats Section: Persentase & Jumlah Suara */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                      {/* Card Persentase Suara */}
+                      <div className="bg-white border border-slate-200 p-3 rounded-xl text-center flex flex-col justify-center space-y-1">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                          Persentase
                         </span>
-                        <div className="text-2xl sm:text-3xl font-black text-purple-600 font-mono leading-none">
+                        <div className="text-xl font-black text-purple-600 font-mono leading-none">
                           {paslon.percentage}%
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200 mt-1">
+                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200 mt-1">
                           <div
                             className="bg-purple-600 h-full rounded-full transition-all duration-700"
                             style={{ width: `${paslon.percentage}%` }}
@@ -293,15 +295,15 @@ export default function LiveCountPage() {
                         </div>
                       </div>
 
-                      {/* 3. Card Jumlah Suara Masuk */}
-                      <div className="md:col-span-3 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-center flex flex-col justify-center space-y-1.5 h-full min-h-[90px]">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          Jumlah Suara Masuk
+                      {/* Card Jumlah Suara Masuk */}
+                      <div className="bg-white border border-slate-200 p-3 rounded-xl text-center flex flex-col justify-center space-y-1">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                          Suara Masuk
                         </span>
-                        <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono leading-none">
+                        <div className="text-xl font-black text-emerald-600 font-mono leading-none">
                           {paslon.voteCount}
                         </div>
-                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 w-fit mx-auto">
+                        <span className="text-[9px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit mx-auto">
                           Suara Sah
                         </span>
                       </div>

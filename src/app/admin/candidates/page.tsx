@@ -313,6 +313,8 @@ export default function AdminCandidatesPage() {
                             <img
                               src={paslon.chairmanPhoto}
                               alt={chairmanNameDisplay}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover rounded-lg"
                             />
                           ) : (
@@ -336,6 +338,8 @@ export default function AdminCandidatesPage() {
                             <img
                               src={paslon.viceChairmanPhoto}
                               alt={viceChairmanNameDisplay}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover rounded-lg"
                             />
                           ) : (

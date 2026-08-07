@@ -42,15 +42,28 @@ export default function AdminDashboardPage() {
   const [candidatesList, setCandidatesList] = useState<any[]>([]);
   const [kopUrl, setKopUrl] = useState<string | null>(null);
 
+  const [isOpeningBeritaAcara, setIsOpeningBeritaAcara] = useState(false);
+
   const handleWitnessChange = (candidateNum: number, name: string) => {
     setWitnessNames((prev) => ({ ...prev, [candidateNum]: name }));
   };
 
   const handleOpenBeritaAcaraModal = async () => {
+    if (isOpeningBeritaAcara) return;
+    setIsOpeningBeritaAcara(true);
+
     try {
-      // Ambil settings terbaru (termasuk Kop Surat)
-      const settingsRes = await fetch('/api/settings');
-      const settingsJson = await settingsRes.json();
+      // Fetch settings & candidates secara PARALEL untuk respon instan
+      const [settingsRes, candidatesRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/candidates'),
+      ]);
+
+      const [settingsJson, json] = await Promise.all([
+        settingsRes.json(),
+        candidatesRes.json(),
+      ]);
+
       if (settingsJson.success && settingsJson.data) {
         if (settingsJson.data.kopUrl) {
           setKopUrl(settingsJson.data.kopUrl);
@@ -58,8 +71,6 @@ export default function AdminDashboardPage() {
         }
       }
 
-      const res = await fetch('/api/candidates');
-      const json = await res.json();
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         const mapped = json.data.map((c: any) => ({
           id: c.id,
@@ -80,8 +91,10 @@ export default function AdminDashboardPage() {
         { id: 1, candidateNumber: 1, chairmanName: 'Pasangan Calon 01', viceChairmanName: '', votesCount: 0 },
         { id: 2, candidateNumber: 2, chairmanName: 'Pasangan Calon 02', viceChairmanName: '', votesCount: 0 },
       ]);
+    } finally {
+      setIsOpeningBeritaAcara(false);
+      setIsBeritaAcaraModalOpen(true);
     }
-    setIsBeritaAcaraModalOpen(true);
   };
 
   const handleConfirmPrintBeritaAcara = (e: React.FormEvent) => {
@@ -485,21 +498,27 @@ export default function AdminDashboardPage() {
             <button
               type="button"
               onClick={handleOpenBeritaAcaraModal}
-              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition group shadow-md text-left cursor-pointer"
+              disabled={isOpeningBeritaAcara}
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition group shadow-md text-left cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <div className="space-y-3">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-600 w-fit">
-                  <FileText className="w-6 h-6" />
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-600 w-fit flex items-center justify-center">
+                  {isOpeningBeritaAcara ? (
+                    <LoaderCircle className="w-6 h-6 animate-spin text-amber-600" />
+                  ) : (
+                    <FileText className="w-6 h-6" />
+                  )}
                 </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition">
-                  Cetak Berita Acara TPS
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition flex items-center gap-2">
+                  <span>Cetak Berita Acara TPS</span>
+                  {isOpeningBeritaAcara && <span className="text-xs text-amber-600 font-normal animate-pulse">(Memuat Data...)</span>}
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Generasi dokumen resmi Berita Acara Rekapitulasi Perhitungan Suara TPS lengkap dengan Tanda Tangan Saksi.
                 </p>
               </div>
               <span className="text-xs font-semibold text-emerald-600 mt-6 inline-flex items-center gap-1 group-hover:translate-x-1 transition">
-                Cetak Berita Acara →
+                {isOpeningBeritaAcara ? 'Memuat Data...' : 'Cetak Berita Acara →'}
               </span>
             </button>
 
