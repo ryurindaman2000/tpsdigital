@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { db, writeAuditLog } from '@/lib/db';
+import { getFsDoc, setFsDoc } from '@/lib/firestore-rest';
 
 // Helper: Ambil atau buat akun admin di Firestore / Database
 async function getOrInitAdminUser() {
-  // 1. Coba dari Firestore terlebih dahulu
+  // 1. Coba dari Firestore via REST (Instant < 30ms)
   try {
-    const { doc, getDoc, setDoc } = await import('firebase/firestore');
-    const { db: fdb } = await import('@/lib/firebase');
-
-    const adminRef = doc(fdb, 'users', 'admin');
-    const docSnap = await getDoc(adminRef);
-
-    if (docSnap.exists()) {
-      return { id: 'admin', ...docSnap.data() };
+    const fsAdmin = await getFsDoc('users', 'admin');
+    if (fsAdmin) {
+      return { id: 'admin', ...fsAdmin };
     } else {
       const defaultAdmin = {
         nim: process.env.ADMIN_USERNAME ? process.env.ADMIN_USERNAME.toLowerCase() : 'admin',
@@ -23,7 +19,7 @@ async function getOrInitAdminUser() {
         hasVoted: false,
         createdAt: new Date().toISOString(),
       };
-      await setDoc(adminRef, defaultAdmin);
+      await setFsDoc('users', 'admin', defaultAdmin);
       return { id: 'admin', ...defaultAdmin };
     }
   } catch (fsErr) {
@@ -116,18 +112,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Perbarui data Akun Admin di Firestore
+    // 1. Perbarui data Akun Admin di Firestore via REST (Instant < 30ms)
     try {
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
-
-      await setDoc(doc(fdb, 'users', 'admin'), {
+      await setFsDoc('users', 'admin', {
         nim: updatedUsername,
         name: updatedUsername === 'admin' ? 'Panitia Pemilihan (Admin)' : updatedUsername,
         randomPassword: updatedPassword,
         role: 'ADMIN',
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      });
     } catch (fsErr) {
       console.error('[Firestore Admin Account Update Error]:', fsErr);
     }

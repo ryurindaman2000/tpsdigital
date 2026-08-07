@@ -1,52 +1,26 @@
-import { db } from './firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getFsCollection } from './firestore-rest';
 
 export async function getFirestoreStats() {
   try {
     // 1. Fetch Users (Voters)
-    const usersRef = collection(db, 'users');
-    let votersSnap;
-    try {
-      votersSnap = await getDocs(query(usersRef, where('role', '==', 'VOTER')));
-    } catch {
-      votersSnap = await getDocs(usersRef);
-    }
-
-    const totalVoters = votersSnap.docs.filter((doc) => doc.data().role === 'VOTER').length;
-    const hasVotedUserCount = votersSnap.docs.filter((doc) => doc.data().role === 'VOTER' && doc.data().hasVoted === true).length;
+    const users = await getFsCollection('users');
+    const voters = users.filter((u: any) => u.role === 'VOTER');
+    const totalVoters = voters.length;
+    const hasVotedUserCount = voters.filter((u: any) => u.hasVoted === true).length;
 
     // 2. Fetch Candidates
-    const candidatesRef = collection(db, 'candidates');
-    const candidatesSnap = await getDocs(candidatesRef);
-    
-    let candidatesList: any[] = [];
-    if (!candidatesSnap.empty) {
-      candidatesSnap.forEach((docSnap) => {
-        candidatesList.push({ id: docSnap.id, ...docSnap.data() });
-      });
-    }
-    candidatesList.sort((a, b) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
+    const candidatesList = await getFsCollection('candidates');
+    candidatesList.sort((a: any, b: any) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
 
     // 3. Fetch Votes
-    const votesRef = collection(db, 'votes');
-    const votesSnap = await getDocs(votesRef);
-    
-    let votesList: any[] = [];
-    if (!votesSnap.empty) {
-      votesSnap.forEach((docSnap) => {
-        const v = docSnap.data();
-        if (v.isValid !== false) {
-          votesList.push(v);
-        }
-      });
-    }
+    const votesList = await getFsCollection('votes');
 
     // Calculate votes per candidate
     const candidateVotesRaw = candidatesList.map((c: any) => {
       const voteCount = votesList.filter(
         (v: any) =>
-          Number(v.candidateId) === Number(c.id) ||
-          Number(v.candidateId) === Number(c.candidateNumber)
+          (v.isValid !== false) &&
+          (Number(v.candidateId) === Number(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
       ).length;
 
       return {
@@ -62,11 +36,11 @@ export async function getFirestoreStats() {
       };
     });
 
-    const totalVotesInBox = candidateVotesRaw.reduce((acc, c) => acc + c.voteCount, 0);
+    const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + c.voteCount, 0);
     const hasVotedCount = Math.max(hasVotedUserCount, totalVotesInBox);
     const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
 
-    const candidateVotes = candidateVotesRaw.map((c) => ({
+    const candidateVotes = candidateVotesRaw.map((c: any) => ({
       ...c,
       percentage: totalVotesInBox > 0 ? Math.round((c.voteCount / totalVotesInBox) * 100) : 0,
     }));

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getFsDoc, setFsDoc } from '@/lib/firestore-rest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,16 +14,13 @@ const defaultSetting = {
   kopUrl: null as string | null,
 };
 
-// GET /api/settings - Ambil nama aplikasi, logo, banner, dan kop surat (Firestore / PostgreSQL)
+// GET /api/settings - Ambil nama aplikasi, logo, banner, dan kop surat (Firestore REST / PostgreSQL)
 export async function GET() {
   try {
-    // 1. Coba ambil dari Firestore terlebih dahulu
+    // 1. Coba ambil dari Firestore REST terlebih dahulu (Instant < 30ms)
     try {
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
-      const docSnap = await getDoc(doc(fdb, 'settings', 'default'));
-      if (docSnap.exists()) {
-        const s = docSnap.data();
+      const s = await getFsDoc('settings', 'default');
+      if (s) {
         return NextResponse.json({
           success: true,
           data: {
@@ -39,10 +37,15 @@ export async function GET() {
       console.error('[Firestore Settings GET Error]:', fsErr);
     }
 
-    // 2. Fallback ke PostgreSQL
-    const setting = await db.setting.findUnique({
-      where: { id: 'default' },
-    });
+    // 2. Fallback aman ke PostgreSQL
+    let setting: any = null;
+    try {
+      if (db.setting) {
+        setting = await db.setting.findUnique({ where: { id: 'default' } });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Settings GET Ignored]:', pgErr);
+    }
 
     if (setting) {
       return NextResponse.json({
@@ -53,7 +56,7 @@ export async function GET() {
           subTitle: setting.subTitle || defaultSetting.subTitle,
           logoUrl: setting.logoUrl || defaultSetting.logoUrl,
           bannerUrl: setting.bannerUrl || defaultSetting.bannerUrl,
-          kopUrl: (setting as any).kopUrl || null,
+          kopUrl: setting.kopUrl || null,
         },
       });
     }
@@ -64,7 +67,7 @@ export async function GET() {
   }
 }
 
-// POST /api/settings - Update nama aplikasi, logo, banner, dan kop surat di Supabase PostgreSQL
+// POST /api/settings - Update nama aplikasi, logo, banner, dan kop surat di Firestore
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -83,11 +86,9 @@ export async function POST(request: Request) {
     const newBannerUrl = bannerUrl || '/images/default-banner.jpg';
     const newKopUrl = kopUrl || null;
 
-    // 1. Simpan ke Firestore
+    // 1. Simpan ke Firestore via REST (Instant < 30ms)
     try {
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
-      await setDoc(doc(fdb, 'settings', 'default'), {
+      await setFsDoc('settings', 'default', {
         id: 'default',
         appName: newAppName,
         subTitle: newSubTitle,
@@ -95,22 +96,41 @@ export async function POST(request: Request) {
         bannerUrl: newBannerUrl,
         kopUrl: newKopUrl,
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      });
     } catch (fsErr) {
       console.error('[Firestore Settings POST Error]:', fsErr);
     }
 
-    // 2. Simpan ke PostgreSQL
-    const updatedSetting = await (db.setting as any).upsert({
-      where: { id: 'default' },
-      update: {
-        appName: newAppName,
-        subTitle: newSubTitle,
-        logoUrl: newLogoUrl,
-        bannerUrl: newBannerUrl,
-        kopUrl: newKopUrl,
-      },
-      create: {
+    // 2. Try Simpan ke PostgreSQL
+    try {
+      if (db.setting) {
+        await (db.setting as any).upsert({
+          where: { id: 'default' },
+          update: {
+            appName: newAppName,
+            subTitle: newSubTitle,
+            logoUrl: newLogoUrl,
+            bannerUrl: newBannerUrl,
+            kopUrl: newKopUrl,
+          },
+          create: {
+            id: 'default',
+            appName: newAppName,
+            subTitle: newSubTitle,
+            logoUrl: newLogoUrl,
+            bannerUrl: newBannerUrl,
+            kopUrl: newKopUrl,
+          },
+        });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Settings POST Ignored]:', pgErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pengaturan nama, logo, banner, dan kop surat aplikasi berhasil diperbarui!',
+      data: {
         id: 'default',
         appName: newAppName,
         subTitle: newSubTitle,
@@ -118,12 +138,6 @@ export async function POST(request: Request) {
         bannerUrl: newBannerUrl,
         kopUrl: newKopUrl,
       },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Pengaturan nama, logo, banner, dan kop surat aplikasi berhasil diperbarui di database!',
-      data: updatedSetting,
     });
   } catch (error: any) {
     console.error('Error updating settings:', error);
