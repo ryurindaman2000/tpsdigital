@@ -326,10 +326,11 @@ export default function LiveCountPage() {
                       </div>
                     </div>
                   </div>
-                );
               })}
             </div>
           )}
+        </div>
+
         {/* Tombol Highlight Card: Kembali ke Halaman Login (di atas Footer) */}
         <div className="mt-8">
           <Link
