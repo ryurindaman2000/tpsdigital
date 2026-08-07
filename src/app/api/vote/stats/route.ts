@@ -4,15 +4,17 @@ import { db } from '@/lib/db';
 export async function GET() {
   try {
     // Jalankan semua query database secara PARALEL untuk kecepatan maksimal
-    const [totalVoters, hasVotedCount, abstainCount, candidates, totalValidVotes] = await Promise.all([
+    const [totalVoters, hasVotedUserCount, candidates, totalValidVotes] = await Promise.all([
       db.user.count({ where: { role: 'VOTER' } }),
       db.user.count({ where: { role: 'VOTER', hasVoted: true } }),
-      db.vote.count({ where: { isValid: false } }),
       db.candidate.findMany({
         orderBy: { candidateNumber: 'asc' },
       }),
       db.vote.count({ where: { isValid: true } }),
     ]);
+
+    // Total Suara Masuk yang riil & presisi (pilih mana yang paling update antara user flag / vote record)
+    const hasVotedCount = Math.max(hasVotedUserCount, totalValidVotes);
 
     const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
 
