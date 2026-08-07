@@ -339,18 +339,18 @@ export default function VoterLoginPage() {
       <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-emerald-500/5 blur-[160px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[160px] rounded-full pointer-events-none" />
 
-      {/* Main Container Split View (Kiri Banner Image, Kanan Form Login - Same Height) */}
-      <main className="max-w-7xl mx-auto w-full my-auto z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28 pb-10">
+      {/* Main Container Split View Wide Display (Kiri Banner Image Utuh, Kanan Form Login) */}
+      <main className="max-w-[95%] lg:max-w-[1400px] mx-auto w-full my-auto z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28 pb-10">
 
-        {/* SISI KIRI: BANNER GAMBAR UTAMA (TINGGI MENYESUAIKAN CARD LOGIN KANAN) */}
-        <div className="lg:col-span-7 w-full flex flex-col justify-center">
-          <div className="w-full h-full min-h-[350px] sm:min-h-[420px] rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative group">
+        {/* SISI KIRI: BANNER GAMBAR UTAMA (MELEBAR KANAN KIRI & UTUH TANPA TERPOTONG) */}
+        <div className="lg:col-span-7 xl:col-span-8 w-full flex flex-col justify-center">
+          <div className="w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative group flex items-center justify-center p-2 sm:p-3">
             <img
               src={activeBannerSrc}
               alt="Banner E-Voting TPS"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover rounded-3xl"
+              className="w-full h-auto max-h-[560px] object-contain rounded-2xl"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
@@ -359,7 +359,7 @@ export default function VoterLoginPage() {
         </div>
 
         {/* SISI KANAN: FORM LOGIN OTENTIKASI PENGGUNA & ADMIN */}
-        <div className="lg:col-span-5 w-full flex flex-col justify-center">
+        <div className="lg:col-span-5 xl:col-span-4 w-full flex flex-col justify-center">
 
           {/* Form Card White Theme */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-5">
