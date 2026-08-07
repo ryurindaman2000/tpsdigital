@@ -339,10 +339,10 @@ export default function AdminDashboardPage() {
 
     fetchDashboardData();
 
-    // Polling Suara Real-time Setiap 5 Detik sekali
+    // Polling Suara Real-time Setiap 3 Detik sekali (Super Responsif)
     const pollInterval = setInterval(() => {
       fetchDashboardData();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [router]);

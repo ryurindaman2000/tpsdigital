@@ -304,6 +304,13 @@ export default function AdminVotersPage() {
     }
 
     fetchVotersData();
+
+    // Polling Real-time DPT Status Voting Setiap 3 Detik sekali
+    const pollInterval = setInterval(() => {
+      fetchVotersData();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Handler Cetak Kartu Akses TPS (Window Print Ready PDF Grid A4 Presisi Kompak)
