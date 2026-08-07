@@ -1,6 +1,7 @@
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "tps-digital";
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAQQWVYgTH5t88oLvxA-hq4V-8G_RFfwKE";
-const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+const DB_IDS = ["(default)", "default", PROJECT_ID];
 
 // Helper: Decode Firestore REST response fields to plain JS object
 export function decodeFirestoreDoc(doc: any) {
@@ -40,12 +41,26 @@ export function encodeFirestoreFields(data: Record<string, any>) {
   return { fields };
 }
 
+// Helper multi-db fetch
+async function fetchWithDbFallback(docPath: string, options?: RequestInit) {
+  for (const dbId of DB_IDS) {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${dbId}/documents/${docPath}?key=${API_KEY}`;
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      if (res.status !== 404) return res; // return error if not 404 database missing
+    } catch {
+      // try next dbId
+    }
+  }
+  const fallbackUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}?key=${API_KEY}`;
+  return fetch(fallbackUrl, options);
+}
+
 // 1. Get Single Document
 export async function getFsDoc(collectionName: string, docId: string) {
   try {
-    const res = await fetch(`${BASE_URL}/${collectionName}/${docId}?key=${API_KEY}`, {
-      cache: 'no-store',
-    });
+    const res = await fetchWithDbFallback(`${collectionName}/${docId}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
     return decodeFirestoreDoc(json);
@@ -58,9 +73,7 @@ export async function getFsDoc(collectionName: string, docId: string) {
 // 2. Get All Documents in Collection
 export async function getFsCollection(collectionName: string) {
   try {
-    const res = await fetch(`${BASE_URL}/${collectionName}?key=${API_KEY}`, {
-      cache: 'no-store',
-    });
+    const res = await fetchWithDbFallback(`${collectionName}`, { cache: 'no-store' });
     if (!res.ok) return [];
     const json = await res.json();
     if (!json.documents || !Array.isArray(json.documents)) return [];
@@ -75,9 +88,7 @@ export async function getFsCollection(collectionName: string) {
 export async function setFsDoc(collectionName: string, docId: string, data: Record<string, any>) {
   try {
     const payload = encodeFirestoreFields(data);
-    const url = `${BASE_URL}/${collectionName}/${docId}?key=${API_KEY}`;
-
-    const res = await fetch(url, {
+    const res = await fetchWithDbFallback(`${collectionName}/${docId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -100,7 +111,7 @@ export async function setFsDoc(collectionName: string, docId: string, data: Reco
 export async function addFsDoc(collectionName: string, data: Record<string, any>) {
   try {
     const payload = encodeFirestoreFields(data);
-    const res = await fetch(`${BASE_URL}/${collectionName}?key=${API_KEY}`, {
+    const res = await fetchWithDbFallback(`${collectionName}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -118,7 +129,7 @@ export async function addFsDoc(collectionName: string, data: Record<string, any>
 // 5. Delete Document
 export async function deleteFsDoc(collectionName: string, docId: string) {
   try {
-    const res = await fetch(`${BASE_URL}/${collectionName}/${docId}?key=${API_KEY}`, {
+    const res = await fetchWithDbFallback(`${collectionName}/${docId}`, {
       method: 'DELETE',
       cache: 'no-store',
     });

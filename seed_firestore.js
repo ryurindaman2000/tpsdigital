@@ -1,6 +1,6 @@
 const PROJECT_ID = "tps-digital";
 const API_KEY = "AIzaSyAQQWVYgTH5t88oLvxA-hq4V-8G_RFfwKE";
-const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const DB_IDS = ["(default)", "default", PROJECT_ID];
 
 function encodeFields(data) {
   const fields = {};
@@ -19,11 +19,21 @@ function encodeFields(data) {
   return { fields };
 }
 
+async function fetchWithDbFallback(docPath, options) {
+  for (const dbId of DB_IDS) {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${dbId}/documents/${docPath}?key=${API_KEY}`;
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return { res, dbId };
+    } catch {}
+  }
+  const fallbackUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}?key=${API_KEY}`;
+  const res = await fetch(fallbackUrl, options);
+  return { res, dbId: '(default)' };
+}
+
 async function setDoc(collection, docId, data) {
-  const keys = Object.keys(data);
-  const updateMask = keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
-  const url = `${BASE_URL}/${collection}/${docId}?${updateMask}&key=${API_KEY}`;
-  const res = await fetch(url, {
+  const { res, dbId } = await fetchWithDbFallback(`${collection}/${docId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(encodeFields(data)),
@@ -31,13 +41,12 @@ async function setDoc(collection, docId, data) {
   if (!res.ok) {
     console.error(`[Error ${res.status}] ${collection}/${docId}:`, await res.text());
   } else {
-    console.log(`✅ [Berhasil] ${collection}/${docId}`);
+    console.log(`✅ [Berhasil via ${dbId}] ${collection}/${docId}`);
   }
 }
 
 async function addDoc(collection, data) {
-  const url = `${BASE_URL}/${collection}?key=${API_KEY}`;
-  const res = await fetch(url, {
+  const { res, dbId } = await fetchWithDbFallback(`${collection}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(encodeFields(data)),
@@ -47,12 +56,12 @@ async function addDoc(collection, data) {
   } else {
     const json = await res.json();
     const newId = json.name ? json.name.split('/').pop() : 'auto';
-    console.log(`✅ [Berhasil Tambah] ${collection}/${newId}`);
+    console.log(`✅ [Berhasil Tambah via ${dbId}] ${collection}/${newId}`);
   }
 }
 
 async function seedAll() {
-  console.log("🔥 Memulai Seeding Firestore sesuai Skema Supabase...\n");
+  console.log("🔥 Memulai Seeding Firestore sesuai Skema Supabase (Multi-Database Fallback)...\n");
 
   // 1. Seed Users (Admin & Sample Voter)
   console.log("📌 1. Seeding Collection 'users'...");
