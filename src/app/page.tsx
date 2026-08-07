@@ -300,12 +300,12 @@ export default function VoterLoginPage() {
             </div>
           </div>
 
-          {/* Footer Splash Screen: Gambar splashscreen.png Kecil di Bawah */}
-          <div className="relative z-10 pb-4 pt-2">
+          {/* Footer Splash Screen: Gambar splashscreen.png Diperbesar Proposional */}
+          <div className="relative z-10 pb-6 pt-2">
             <img
               src="/images/splashscreen.png"
               alt="Powered By Pancakalabs"
-              className="h-10 sm:h-12 w-auto object-contain mx-auto opacity-90"
+              className="h-16 sm:h-20 md:h-24 w-auto object-contain mx-auto opacity-95 transition transform hover:scale-105 drop-shadow-sm"
             />
           </div>
         </div>
