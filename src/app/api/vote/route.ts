@@ -32,7 +32,55 @@ export async function POST(request: Request) {
     const { candidateId, candidateNumber, isAbstain } = await request.json();
     const targetCandidateNum = Number(candidateNumber || candidateId || 1);
 
-    // 1. Cek Mahasiswa di Database PostgreSQL
+    // 1. Coba simpan suara via Firestore terlebih dahulu
+    try {
+      const { collection, addDoc, doc, updateDoc, getDocs, query, where } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+
+      const userQ = query(collection(fdb, 'users'), where('nim', '==', nim));
+      const userSnap = await getDocs(userQ);
+
+      if (!userSnap.empty) {
+        const userDoc = userSnap.docs[0];
+        const userData = userDoc.data();
+
+        if (userData.hasVoted) {
+          return NextResponse.json(
+            { message: 'Hak pilih Anda telah tercatat sebelumnya.' },
+            { status: 400 }
+          );
+        }
+
+        // Simpan suara anonim ke Firestore
+        await addDoc(collection(fdb, 'votes'), {
+          candidateId: isAbstain ? null : targetCandidateNum,
+          isValid: !isAbstain,
+          createdAt: new Date().toISOString(),
+        });
+
+        // Kunci akun pemilih
+        await updateDoc(doc(fdb, 'users', userDoc.id), {
+          hasVoted: true,
+          votedAt: new Date().toISOString(),
+        });
+
+        await writeAuditLog(
+          'VOTE_CAST',
+          nim,
+          ip,
+          isAbstain ? 'Pemilih memilih abstain' : `Suara untuk Paslon #${targetCandidateNum}`
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: 'Suara Anda telah berhasil disimpan secara anonim ke Firestore.',
+        });
+      }
+    } catch (fsErr) {
+      console.error('[Firestore Vote POST Error]:', fsErr);
+    }
+
+    // 2. Fallback ke PostgreSQL
     const voter = await db.user.findUnique({
       where: { nim },
     });

@@ -13,9 +13,33 @@ const defaultSetting = {
   kopUrl: null as string | null,
 };
 
-// GET /api/settings - Ambil nama aplikasi, logo, banner, dan kop surat dari Supabase PostgreSQL
+// GET /api/settings - Ambil nama aplikasi, logo, banner, dan kop surat (Firestore / PostgreSQL)
 export async function GET() {
   try {
+    // 1. Coba ambil dari Firestore terlebih dahulu
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+      const docSnap = await getDoc(doc(fdb, 'settings', 'default'));
+      if (docSnap.exists()) {
+        const s = docSnap.data();
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: 'default',
+            appName: s.appName || defaultSetting.appName,
+            subTitle: s.subTitle || defaultSetting.subTitle,
+            logoUrl: s.logoUrl || defaultSetting.logoUrl,
+            bannerUrl: s.bannerUrl || defaultSetting.bannerUrl,
+            kopUrl: s.kopUrl || null,
+          },
+        });
+      }
+    } catch (fsErr) {
+      console.error('[Firestore Settings GET Error]:', fsErr);
+    }
+
+    // 2. Fallback ke PostgreSQL
     const setting = await db.setting.findUnique({
       where: { id: 'default' },
     });
@@ -59,6 +83,24 @@ export async function POST(request: Request) {
     const newBannerUrl = bannerUrl || '/images/default-banner.jpg';
     const newKopUrl = kopUrl || null;
 
+    // 1. Simpan ke Firestore
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+      await setDoc(doc(fdb, 'settings', 'default'), {
+        id: 'default',
+        appName: newAppName,
+        subTitle: newSubTitle,
+        logoUrl: newLogoUrl,
+        bannerUrl: newBannerUrl,
+        kopUrl: newKopUrl,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (fsErr) {
+      console.error('[Firestore Settings POST Error]:', fsErr);
+    }
+
+    // 2. Simpan ke PostgreSQL
     const updatedSetting = await (db.setting as any).upsert({
       where: { id: 'default' },
       update: {
