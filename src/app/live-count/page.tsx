@@ -230,17 +230,19 @@ export default function LiveCountPage() {
                     className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition"
                   >
                     {/* Header Badge Paslon */}
-                    <div className="flex flex-col items-center text-center border-b border-slate-200/80 pb-3 gap-1.5">
+                    <div className="flex flex-col items-center text-center border-b border-slate-200/80 pb-3 gap-1.5 w-full overflow-hidden">
                       <span className="px-3.5 py-1 bg-emerald-600 text-white font-black rounded-xl text-xs shadow-sm tracking-wide">
                         PASLON 0{paslon.candidateNumber}
                       </span>
-                      <h4 className="text-sm font-bold text-slate-900 line-clamp-2">{displayName}</h4>
+                      <h4 className="text-sm font-bold text-slate-900 leading-snug break-words break-all max-w-full">
+                        {displayName}
+                      </h4>
                     </div>
 
                     {/* Foto Pasangan Ketua & Wakil Calon */}
                     <div className="flex items-center justify-center gap-3 py-1">
                       {/* Foto Ketua Calon */}
-                      <div className="flex flex-col items-center text-center">
+                      <div className="flex flex-col items-center text-center max-w-[110px]">
                         <div className="w-20 h-24 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
                           {paslon.chairmanPhoto || paslon.photoUrl ? (
                             <img
@@ -259,14 +261,14 @@ export default function LiveCountPage() {
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
                           Calon Ketua
                         </span>
-                        <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[90px]">
+                        <span className="text-xs font-bold text-slate-800 leading-tight break-words break-all max-w-full">
                           {paslon.chairmanName || `Paslon 0${paslon.candidateNumber}`}
                         </span>
                       </div>
 
                       {/* Foto Wakil Calon */}
                       {(paslon.viceChairmanPhoto || paslon.viceChairmanName) && (
-                        <div className="flex flex-col items-center text-center">
+                        <div className="flex flex-col items-center text-center max-w-[110px]">
                           <div className="w-20 h-24 bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm flex items-center justify-center p-1 relative">
                             {paslon.viceChairmanPhoto ? (
                               <img
@@ -285,7 +287,7 @@ export default function LiveCountPage() {
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
                             Calon Wakil
                           </span>
-                          <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[90px]">
+                          <span className="text-xs font-bold text-slate-800 leading-tight break-words break-all max-w-full">
                             {paslon.viceChairmanName || '-'}
                           </span>
                         </div>
