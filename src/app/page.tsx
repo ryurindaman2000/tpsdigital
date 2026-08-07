@@ -282,7 +282,7 @@ export default function VoterLoginPage() {
               <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-3xl blur-xl animate-pulse pointer-events-none" />
               <div className="w-32 h-32 sm:w-36 sm:h-36 bg-white rounded-3xl border border-slate-200/80 p-4 shadow-xl flex items-center justify-center relative z-10 transition transform group-hover:scale-105">
                 <img
-                  src={activeLogoSrc}
+                  src={activeLogoSrc ? `${activeLogoSrc}?t=${Date.now()}` : '/images/default-logo.png'}
                   alt="TPS-Digital Logo"
                   className="w-full h-full object-contain drop-shadow-md animate-pulse"
                   onError={(e) => {
