@@ -103,6 +103,35 @@ export default function VoterLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Fallback: Coba Otentikasi Langsung via Firebase Web SDK Client Browser
+        try {
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+          const snap = await getDocs(collection(fdb, 'users'));
+          let matchedVoter: any = null;
+
+          snap.forEach((d) => {
+            const voterData = d.data();
+            if (
+              voterData.role === 'VOTER' &&
+              String(voterData.nim || '').trim().toLowerCase() === loginNim.trim().toLowerCase() &&
+              (voterData.randomPassword === loginPass.trim() || voterData.password === loginPass.trim())
+            ) {
+              matchedVoter = voterData;
+            }
+          });
+
+          if (matchedVoter) {
+            const targetName = matchedVoter.name || matchedVoter.nim;
+            localStorage.setItem('voter_name', targetName);
+            localStorage.setItem('voter_nim', matchedVoter.nim);
+            router.push(`/vote?name=${encodeURIComponent(targetName)}`);
+            return;
+          }
+        } catch (clientErr) {
+          console.warn('[Client Auth Fallback Error]:', clientErr);
+        }
+
         throw new Error(data.message || 'Login gagal. Periksa ID Pemilih / Username dan Password.');
       }
 

@@ -118,12 +118,15 @@ export async function POST(request: Request) {
 
     // ── 3. OTENTIKASI PEMILIH (VOTER) DI FIRESTORE ──
     try {
-      const usersList = await getFsCollection('users');
-      const fsVoter = usersList.find(
-        (u: any) => String(u.nim).trim().toLowerCase() === lowerNim && u.role === 'VOTER'
-      );
+      let fsVoter: any = await getFsDoc('users', lowerNim);
+      if (!fsVoter) {
+        const usersList = await getFsCollection('users');
+        fsVoter = usersList.find(
+          (u: any) => String(u.nim || '').trim().toLowerCase() === lowerNim && u.role === 'VOTER'
+        );
+      }
 
-      if (fsVoter) {
+      if (fsVoter && fsVoter.role === 'VOTER') {
         const isPassValid = await comparePassword(trimmedPass, fsVoter.randomPassword || fsVoter.password);
         if (!isPassValid) {
           writeAuditLog('LOGIN_FAILED', lowerNim, '127.0.0.1', 'Password pemilih salah').catch(() => {});
