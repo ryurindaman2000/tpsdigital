@@ -560,7 +560,7 @@ export default function VoterLoginPage() {
 
       {/* Footer Security */}
       <footer className="max-w-7xl mx-auto w-full text-center py-4 text-xs text-slate-500 z-10 flex justify-center items-center gap-2 flex-wrap px-6">
-        <span>© 2026 Panitia Pemilihan TPS • {appName}</span>
+        <span>© 2026 Panitia Pemilihan Pemungutan Suara • {appName}</span>
         <span>•</span>
         <span>
           Powered by{' '}
