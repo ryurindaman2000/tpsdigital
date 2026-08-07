@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           success: true,
-          message: 'Suara Anda telah berhasil disimpan secara anonim ke Firestore.',
+          message: 'Suara Anda telah berhasil disimpan secara anonim.',
         });
       }
     } catch (fsErr) {
