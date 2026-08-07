@@ -86,103 +86,16 @@ export default function VoterLoginPage() {
       .catch((err) => console.error(err));
   }, []);
 
-  // Start Camera Stream (Mobile Android/iOS & Laptop)
-  const startCamera = async () => {
-    setCameraError('');
-    setIsScanning(true);
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setCameraError('Browser Anda tidak mendukung akses kamera langsung. Silakan gunakan fitur Unggah Foto QR.');
-        setIsScanning(false);
-        return;
-      }
-
-      // 'environment' memprioritaskan Kamera Belakang HP Android / iPhone
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (err: any) {
-      console.error('Izin Kamera Ditolak / Tidak Ditemukan:', err);
-      setCameraError(
-        'Kamera tidak dapat dibuka. Pastikan Anda telah memberikan izin akses kamera (Allow Camera) pada browser HP/Laptop Anda, atau gunakan pilihan Unggah Foto Kartu Akses di bawah.'
-      );
-      setIsScanning(false);
-    }
-  };
-
-  // Stop Camera Stream Cleanup
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsScanning(false);
-  };
-
-  const handleOpenQrModal = () => {
-    setIsQrModalOpen(true);
-    startCamera();
-  };
-
-  const handleCloseQrModal = () => {
-    stopCamera();
-    setIsQrModalOpen(false);
-  };
-
-  // Process QR Data (dari Kamera atau Galeri Foto HP)
-  const handleQrDataReceived = (dataString: string) => {
-    if (!dataString) return;
-    const cleanData = dataString.trim();
-    try {
-      const parsed = JSON.parse(cleanData);
-      if (parsed.nim || parsed.id) setNim(parsed.nim || parsed.id);
-      if (parsed.password || parsed.pass) setPassword(parsed.password || parsed.pass);
-    } catch (e) {
-      if (cleanData.includes(':')) {
-        const parts = cleanData.split(':');
-        setNim(parts[0].trim());
-        if (parts[1]) setPassword(parts[1].trim());
-      } else if (cleanData.includes('|')) {
-        const parts = cleanData.split('|');
-        setNim(parts[0].trim());
-        if (parts[1]) setPassword(parts[1].trim());
-      } else {
-        setNim(cleanData);
-      }
-    }
-    handleCloseQrModal();
-  };
-
-  // Handler Upload File Gambar QR Code dari HP/Laptop
-  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const fileNameClean = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
-      handleQrDataReceived(fileNameClean);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Execute Login Helper (Manual Submit / Auto Login dari QR)
+  const performLogin = async (loginNim: string, loginPass: string) => {
     setErrorMsg('');
-
-    if (!nim.trim() || !password.trim()) {
-      setErrorMsg('ID Pemilih / Username dan Password wajib diisi.');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nim, password }),
+        body: JSON.stringify({ nim: loginNim, password: loginPass }),
       });
 
       const data = await res.json();
@@ -207,6 +120,144 @@ export default function VoterLoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const animFrameRef = useRef<number | null>(null);
+
+  // Process QR Data (dari Kamera atau Galeri Foto HP) & AUTO LOGIN
+  const handleQrDataReceived = (dataString: string) => {
+    if (!dataString) return;
+    stopCamera();
+    setIsQrModalOpen(false);
+
+    let detectedNim = '';
+    let detectedPass = '';
+
+    const cleanData = dataString.trim();
+    try {
+      const parsed = JSON.parse(cleanData);
+      if (parsed.nim || parsed.id) detectedNim = parsed.nim || parsed.id;
+      if (parsed.password || parsed.pass) detectedPass = parsed.password || parsed.pass;
+    } catch (e) {
+      if (cleanData.includes(':')) {
+        const parts = cleanData.split(':');
+        detectedNim = parts[0].trim();
+        if (parts[1]) detectedPass = parts[1].trim();
+      } else if (cleanData.includes('|')) {
+        const parts = cleanData.split('|');
+        detectedNim = parts[0].trim();
+        if (parts[1]) detectedPass = parts[1].trim();
+      } else {
+        detectedNim = cleanData;
+      }
+    }
+
+    if (detectedNim) setNim(detectedNim);
+    if (detectedPass) setPassword(detectedPass);
+
+    // AUTO LOGIN OTOMATIS JIKA NIM & PASS LENGKAP
+    if (detectedNim && detectedPass) {
+      performLogin(detectedNim, detectedPass);
+    }
+  };
+
+  // Real-time Frame Scanner Loop via Browser BarcodeDetector / Canvas Analysis
+  const scanVideoFrame = async () => {
+    if (!videoRef.current || !streamRef.current) return;
+
+    // 1. Coba browser Native BarcodeDetector (Android Chrome / Edge Super Kencang)
+    if ('BarcodeDetector' in window) {
+      try {
+        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+        const barcodes = await barcodeDetector.detect(videoRef.current);
+        if (barcodes && barcodes.length > 0) {
+          const qrText = barcodes[0].rawValue;
+          if (qrText) {
+            handleQrDataReceived(qrText);
+            return;
+          }
+        }
+      } catch (err) {
+        // Fallback silently jika error
+      }
+    }
+
+    if (streamRef.current) {
+      animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+    }
+  };
+
+  // Start Camera Stream (Mobile Android/iOS & Laptop)
+  const startCamera = async () => {
+    setCameraError('');
+    setIsScanning(true);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError('Browser Anda tidak mendukung akses kamera langsung. Silakan gunakan fitur Unggah Foto QR.');
+        setIsScanning(false);
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        // Mulai loop pemindaian real-time 60fps
+        animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+      }
+    } catch (err: any) {
+      console.error('Izin Kamera Ditolak / Tidak Ditemukan:', err);
+      setCameraError(
+        'Kamera tidak dapat dibuka. Pastikan Anda telah memberikan izin akses kamera (Allow Camera) pada browser HP/Laptop Anda, atau gunakan pilihan Unggah Foto Kartu Akses di bawah.'
+      );
+      setIsScanning(false);
+    }
+  };
+
+  // Stop Camera Stream Cleanup
+  const stopCamera = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const handleOpenQrModal = () => {
+    setIsQrModalOpen(true);
+    setTimeout(() => {
+      startCamera();
+    }, 200);
+  };
+
+  const handleCloseQrModal = () => {
+    stopCamera();
+    setIsQrModalOpen(false);
+  };
+
+  // Handler Upload File Gambar QR Code dari HP/Laptop
+  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fileNameClean = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
+      handleQrDataReceived(fileNameClean);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nim.trim() || !password.trim()) {
+      setErrorMsg('ID Pemilih / Username dan Password wajib diisi.');
+      return;
+    }
+    performLogin(nim, password);
   };
 
   const activeBannerSrc = bannerUrl || '/images/default-banner.jpg';
