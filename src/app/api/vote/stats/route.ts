@@ -19,11 +19,13 @@ export async function GET() {
       select: { candidateId: true },
     });
 
-    // Hitung perolehan suara tiap paslon murni BERDASARKAN CANDIDATE NUMBER ATAU ID
+    // Hitung perolehan suara tiap paslon murni BERDASARKAN CANDIDATE NUMBER ATAU ID (dengan konversi Number presisi)
     const candidateVotesRaw = candidates.map((c: any) => {
       // Hitung suara yang cocok dengan ID Kandidat atau candidateNumber (1, 2, dst)
       const voteCount = allVotes.filter(
-        (v: any) => v.candidateId === c.id || v.candidateId === c.candidateNumber
+        (v: any) =>
+          Number(v.candidateId) === Number(c.id) ||
+          Number(v.candidateId) === Number(c.candidateNumber)
       ).length;
 
       return {
