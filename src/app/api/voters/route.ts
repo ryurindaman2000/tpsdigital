@@ -24,18 +24,16 @@ export async function GET() {
       const users = await getFsCollection('users');
       const voters = users.filter((u: any) => u.role === 'VOTER');
 
-      if (voters.length > 0) {
-        const data = voters.map((v: any) => ({
-          id: v.id,
-          nim: v.nim,
-          name: v.name,
-          randomPassword: v.randomPassword || '***',
-          hasVoted: v.hasVoted || false,
-          votedAt: v.votedAt || null,
-          createdAt: v.createdAt || null,
-        }));
-        return NextResponse.json({ success: true, data });
-      }
+      const data = voters.map((v: any) => ({
+        id: v.id,
+        nim: v.nim,
+        name: v.name,
+        randomPassword: v.randomPassword || '***',
+        hasVoted: v.hasVoted || false,
+        votedAt: v.votedAt || null,
+        createdAt: v.createdAt || null,
+      }));
+      return NextResponse.json({ success: true, data });
     } catch (fsErr) {
       console.error('[Firestore Voters GET Fallback]:', fsErr);
     }
