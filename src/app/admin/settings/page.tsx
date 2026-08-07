@@ -274,8 +274,8 @@ export default function SettingsAdminPage() {
     }
   };
 
-// Helper Kompresi Gambar Base64 agar Payload Ringan & Instan (< 100KB)
-function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: number, quality = 0.8): Promise<string> {
+// Helper Kompresi Gambar Base64 Presisi (Mendukung Transparansi PNG/WebP tanpa latar belakang hitam)
+function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: number, quality = 0.85): Promise<string> {
   if (!base64Str || !base64Str.startsWith('data:image')) return Promise.resolve(base64Str);
   return new Promise((resolve) => {
     const img = new Image();
@@ -298,8 +298,15 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // Bersihkan canvas agar area transparan tetap bening (tidak hitam)
+        ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        
+        // Gunakan format image/png atau image/webp jika asal gambar mengandung transparansi
+        const isPngOrWebp = base64Str.includes('image/png') || base64Str.includes('image/webp');
+        const mimeType = isPngOrWebp ? 'image/png' : 'image/jpeg';
+        
+        resolve(canvas.toDataURL(mimeType, quality));
       } else {
         resolve(base64Str);
       }
