@@ -167,7 +167,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Akun admin berhasil diperbarui di Firestore! Gunakan username & password baru untuk login.',
+      message: 'Akun admin berhasil diperbarui! Gunakan username & password baru untuk login.',
       username: updatedUsername,
     });
   } catch (error: any) {
