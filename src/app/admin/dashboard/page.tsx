@@ -381,13 +381,6 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchDashboardData}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition shadow-sm"
-            title="Segarkan Data Dashboard"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
             onClick={handleLogout}
             className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs border border-red-200 transition flex items-center gap-1.5 shadow-sm"
           >
