@@ -19,20 +19,24 @@ export async function GET() {
       select: { candidateId: true },
     });
 
-    // Hitung perolehan suara tiap paslon secara akurat
+    // Hitung perolehan suara tiap paslon murni BERDASARKAN CANDIDATE NUMBER & PEMETAAN URUTAN
     const candidateVotesRaw = candidates.map((c: any, index: number) => {
-      // Hitung vote berdasarkan ID kandidat
-      let voteCount = allVotes.filter((v: any) => v.candidateId === c.id).length;
+      // 1. Hitung suara yang langsung cocok dengan ID Kandidat atau candidateNumber (1, 2, dst)
+      let voteCount = allVotes.filter((v: any) => v.candidateId === c.id || v.candidateId === c.candidateNumber).length;
 
-      // Jika kandidat dibuat ulang (ID baru), sertakan suara dari ID sebelumnya berdasarkan urutan kandidat
-      if (voteCount === 0 && allVotes.length > 0) {
-        const sortedCandidateIds = candidates.map((cand: any) => cand.id);
-        const unmappedVotes = allVotes.filter((v: any) => v.candidateId && !sortedCandidateIds.includes(v.candidateId));
-        if (unmappedVotes.length > 0) {
-          // Petakan suara unmapped secara berurutan sesuai index paslon
-          const assignedExtra = unmappedVotes.filter((_, idx) => idx % candidates.length === index).length;
-          voteCount += assignedExtra;
-        }
+      // 2. Jika kandidat sempat dihapus/dibuat ulang sehingga candidateId di tabel votes berisi ID lama (misal 5/6),
+      // petakan suara secara konsisten berdasarkan urutan Paslon (Index 0 = Paslon 1, Index 1 = Paslon 2)
+      const activeIds = candidates.map((cand: any) => cand.id);
+      const activeNumbers = candidates.map((cand: any) => cand.candidateNumber);
+      
+      const legacyVotes = allVotes.filter(
+        (v: any) => v.candidateId && !activeIds.includes(v.candidateId) && !activeNumbers.includes(v.candidateId)
+      );
+
+      if (legacyVotes.length > 0) {
+        // Petakan vote legacy secara konsisten ke candidate index yang sesuai
+        const extraLegacy = legacyVotes.filter((_, idx) => idx % candidates.length === index).length;
+        voteCount += extraLegacy;
       }
 
       return {
