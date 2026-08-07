@@ -14,11 +14,11 @@ export async function GET() {
       hasVoted: false,
       createdAt: new Date().toISOString(),
     };
-    await setFsDoc('users', 'admin', adminData);
-    await setFsDoc('users', 'users', adminData);
+    const resUsers1 = await setFsDoc('users', 'admin', adminData);
+    const resUsers2 = await setFsDoc('users', 'users', adminData);
 
     // 2. Seed Settings
-    await setFsDoc('settings', 'default', {
+    const resSettings = await setFsDoc('settings', 'default', {
       id: 'default',
       appName: 'TPS-DIGITAL',
       subTitle: 'Sistem E-Voting Terenkripsi & Transparan',
@@ -29,7 +29,7 @@ export async function GET() {
     });
 
     // 3. Seed Candidates (Paslon 01 & 02)
-    await addFsDoc('candidates', {
+    const resC1 = await addFsDoc('candidates', {
       candidateNumber: 1,
       chairmanName: 'Ahmad Fauzi',
       viceChairmanName: 'Siti Rahma',
@@ -38,11 +38,11 @@ export async function GET() {
       viceChairmanPhoto: '/images/default-logo.png',
       photoUrl: '/images/default-logo.png',
       vision: 'Mewujudkan organisasi yang transparan, profesional, dan berintegritas.',
-      mission: '1. Mengoptimalkan sistem digitalisasi.\n2. Mengedepankan aspirasi seluruh anggota.\n3. Membangun kolaborasi berkelanjutan.',
+      mission: '1. Mengoptimalkan sistem digitalisasi.\n2. Mengedepankan aspirasi seluruh anggota.',
       createdAt: new Date().toISOString(),
     });
 
-    await addFsDoc('candidates', {
+    const resC2 = await addFsDoc('candidates', {
       candidateNumber: 2,
       chairmanName: 'Budi Santoso',
       viceChairmanName: 'Dewi Lestari',
@@ -51,7 +51,7 @@ export async function GET() {
       viceChairmanPhoto: '/images/default-logo.png',
       photoUrl: '/images/default-logo.png',
       vision: 'Inovasi tanpa batas untuk kemajuan dan kesejahteraan bersama.',
-      mission: '1. Menyediakan layanan digital terpadu.\n2. Meningkatkan efisiensi kerja organisasi.\n3. Menjunjung tinggi asas keadilan.',
+      mission: '1. Menyediakan layanan digital terpadu.\n2. Meningkatkan efisiensi kerja.',
       createdAt: new Date().toISOString(),
     });
 
@@ -60,9 +60,16 @@ export async function GET() {
       action: 'INITIAL_SEED',
       actor: 'admin',
       ipAddress: '127.0.0.1',
-      details: 'Initial seeding Firestore selesai via API',
+      details: 'Initial seeding Firestore via API',
       createdAt: new Date().toISOString(),
     });
+
+    if (!resUsers1 || !resSettings || !resC1) {
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal menulis ke Firestore. Pastikan Firestore Database (default) sudah diaktifkan di Firebase Console.',
+      }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,
