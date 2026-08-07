@@ -374,92 +374,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
     }
   };
 
-  const [isSeeding, setIsSeeding] = useState(false);
-
-  // Handler Client-Side & Server API Seeding Firestore
-  const handleSeedFirestore = async () => {
-    if (!confirm('Apakah Anda yakin ingin mengisi (seed) data awal Firestore (Users, Paslon, Settings, Audit Logs) sesuai skema Supabase?')) return;
-    setIsSeeding(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    try {
-      // 1. Coba via API Route Server REST
-      const res = await fetch('/api/seed', { cache: 'no-store' });
-      const json = await res.json();
-
-      if (res.ok && json.success) {
-        setSuccessMsg('🔥 Firestore Berhasil Di-Seed! Seluruh koleksi (users, settings, candidates, audit_logs) telah terisi.');
-        setIsSeeding(false);
-        return;
-      }
-    } catch (apiErr) {
-      console.warn('[API Seed Fallback to Client SDK]:', apiErr);
-    }
-
-    try {
-      const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
-
-      // 1. Seed Users (Admin)
-      const adminData = {
-        nim: 'admin',
-        name: 'Panitia Pemilihan (Admin)',
-        randomPassword: 'admin',
-        role: 'ADMIN',
-        hasVoted: false,
-        createdAt: new Date().toISOString(),
-      };
-      await setDoc(doc(fdb, 'users', 'users'), adminData);
-      await setDoc(doc(fdb, 'users', 'admin'), adminData);
-
-      // 2. Seed Settings
-      await setDoc(doc(fdb, 'settings', 'default'), {
-        id: 'default',
-        appName: 'TPS-DIGITAL',
-        subTitle: 'Sistem E-Voting Terenkripsi & Transparan',
-        logoUrl: '/images/default-logo.png',
-        bannerUrl: '/images/default-banner.jpg',
-        kopUrl: null,
-        updatedAt: new Date().toISOString(),
-      });
-
-      // 3. Seed Candidates (Paslon 01 & 02)
-      await addDoc(collection(fdb, 'candidates'), {
-        candidateNumber: 1,
-        chairmanName: 'Ahmad Fauzi',
-        viceChairmanName: 'Siti Rahma',
-        name: 'Ahmad Fauzi & Siti Rahma',
-        chairmanPhoto: '/images/default-logo.png',
-        viceChairmanPhoto: '/images/default-logo.png',
-        photoUrl: '/images/default-logo.png',
-        vision: 'Mewujudkan organisasi yang transparan, profesional, dan berintegritas.',
-        mission: '1. Mengoptimalkan sistem digitalisasi.\n2. Mengedepankan aspirasi seluruh anggota.',
-        createdAt: new Date().toISOString(),
-      });
-
-      await addDoc(collection(fdb, 'candidates'), {
-        candidateNumber: 2,
-        chairmanName: 'Budi Santoso',
-        viceChairmanName: 'Dewi Lestari',
-        name: 'Budi Santoso & Dewi Lestari',
-        chairmanPhoto: '/images/default-logo.png',
-        viceChairmanPhoto: '/images/default-logo.png',
-        photoUrl: '/images/default-logo.png',
-        vision: 'Inovasi tanpa batas untuk kemajuan dan kesejahteraan bersama.',
-        mission: '1. Menyediakan layanan digital terpadu.\n2. Meningkatkan efisiensi kerja.',
-        createdAt: new Date().toISOString(),
-      });
-
-      setSuccessMsg('🔥 Firestore Berhasil Di-Seed! Seluruh koleksi (users, settings, candidates, audit_logs) telah terisi.');
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg('Gagal melakukan seeding Firestore: Database (default) belum diaktifkan di Firebase Console.');
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
 
   return (
@@ -483,8 +397,8 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
 
       {/* Main Content */}
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
-        {/* Action Bar / Tombol Kembali ke Dashboard & Seed Firebase */}
-        <div className="flex justify-between items-center gap-3 flex-wrap">
+        {/* Action Bar / Tombol Kembali ke Dashboard */}
+        <div className="flex justify-between items-center">
           <Link
             href="/admin/dashboard"
             className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-2 border border-slate-200 shadow-sm transition"
@@ -492,15 +406,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
             <ArrowLeft className="w-4 h-4" />
             <span>Kembali ke Dashboard</span>
           </Link>
-
-          <button
-            type="button"
-            onClick={handleSeedFirestore}
-            disabled={isSeeding}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
-          >
-            {isSeeding ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <span>🔥 Seed Data Firestore (Skema Supabase)</span>}
-          </button>
         </div>
 
         {isLoading ? (
