@@ -326,6 +326,7 @@ export default function LiveCountPage() {
                       </div>
                     </div>
                   </div>
+                );
               })}
             </div>
           )}
