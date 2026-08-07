@@ -88,7 +88,10 @@ function VotingBoothContent() {
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId: selectedCandidate.id }),
+        body: JSON.stringify({ 
+          candidateId: selectedCandidate.candidateNumber,
+          candidateNumber: selectedCandidate.candidateNumber,
+        }),
       });
 
       if (!res.ok) {

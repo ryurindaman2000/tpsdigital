@@ -29,7 +29,8 @@ export async function POST(request: Request) {
     }
 
     const nim = sessionUser.nim;
-    const { candidateId, isAbstain } = await request.json();
+    const { candidateId, candidateNumber, isAbstain } = await request.json();
+    const targetCandidateNum = Number(candidateNumber || candidateId || 1);
 
     // 1. Cek Mahasiswa di Database PostgreSQL
     const voter = await db.user.findUnique({
@@ -52,10 +53,10 @@ export async function POST(request: Request) {
 
     // 2. Transaksi Atomik: Simpan Suara Anonim & Lock Akun Pemilih
     await db.$transaction([
-      // Simpan suara anonim TANPA user_id (LUBER JURDIL)
+      // Simpan suara anonim dengan candidateId diisi Nomor Urut Paslon (1, 2, dst)
       db.vote.create({
         data: {
-          candidateId: isAbstain ? null : Number(candidateId),
+          candidateId: isAbstain ? null : targetCandidateNum,
           isValid: !isAbstain,
         },
       }),
