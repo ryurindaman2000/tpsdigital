@@ -440,43 +440,35 @@ export default function VoterLoginPage() {
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  'Memverifikasi Akses...'
-                ) : (
-                  <>
-                    <span>Masuk ke Sistem</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+              {/* Action Buttons Grid: Scan QR Code (Kiri) & Masuk ke Sistem (Kanan) */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleOpenQrModal}
+                  className="py-3 px-3 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border-2 border-emerald-500/60 text-emerald-800 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20"
+                >
+                  <div className="p-1 bg-emerald-600 text-white rounded-lg shadow-sm shrink-0">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <span className="truncate">Scan QR Code</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    'Memverifikasi...'
+                  ) : (
+                    <>
+                      <span>Masuk ke Sistem</span>
+                      <ArrowRight className="w-4 h-4 shrink-0" />
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
-
-            {/* Quick QR Divider */}
-            <div className="relative my-4 text-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <span className="relative px-3 bg-white text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                Atau Scan QR Code
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleOpenQrModal}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border-2 border-emerald-500/60 text-emerald-800 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2.5 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20 animate-pulse hover:animate-none"
-            >
-              <div className="p-1 bg-emerald-600 text-white rounded-lg shadow-sm">
-                <QrCode className="w-4 h-4" />
-              </div>
-              <span className="tracking-wide">Scan QR Code dari Kartu Akses</span>
-            </button>
           </div>
         </div>
       </main>
