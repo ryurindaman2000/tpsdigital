@@ -13,19 +13,12 @@ export async function GET() {
       db.vote.count({ where: { isValid: true } }),
     ]);
 
-    // Total Suara Masuk yang riil & presisi (pilih mana yang paling update antara user flag / vote record)
-    const hasVotedCount = Math.max(hasVotedUserCount, totalValidVotes);
-
-    const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
-
     // Hitung perolehan suara tiap paslon secara paralel
-    const candidateVotes = await Promise.all(
+    const candidateVotesRaw = await Promise.all(
       candidates.map(async (c: any) => {
         const voteCount = await db.vote.count({
           where: { candidateId: c.id, isValid: true },
         });
-
-        const percentage = totalValidVotes > 0 ? Math.round((voteCount / totalValidVotes) * 100) : 0;
 
         return {
           id: c.id,
@@ -37,10 +30,22 @@ export async function GET() {
           viceChairmanPhoto: c.viceChairmanPhoto,
           photoUrl: c.photoUrl || c.chairmanPhoto,
           voteCount,
-          percentage,
         };
       })
     );
+
+    // Hitung total suara fisik sah yang diterima semua paslon
+    const totalVotesInBox = candidateVotesRaw.reduce((acc, c) => acc + c.voteCount, 0);
+
+    // Gunakan total suara terbesar antara user.hasVoted dan vote record
+    const hasVotedCount = Math.max(hasVotedUserCount, totalVotesInBox);
+    const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
+
+    // Sertakan persentase yang sudah presisi
+    const candidateVotes = candidateVotesRaw.map((c) => ({
+      ...c,
+      percentage: totalVotesInBox > 0 ? Math.round((c.voteCount / totalVotesInBox) * 100) : 0,
+    }));
 
     return NextResponse.json({
       success: true,
