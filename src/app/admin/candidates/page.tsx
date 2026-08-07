@@ -258,20 +258,34 @@ export default function AdminCandidatesPage() {
     setIsDeleteModalOpen(false);
 
     try {
-      const res = await fetch('/api/candidates', {
+      const res = await fetch(`/api/candidates?id=${encodeURIComponent(String(targetId))}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: targetId }),
       });
 
       if (!res.ok) {
-        // Jika server gagal, kembalikan data dan refresh
-        fetchCandidatesData();
-        alert('Gagal menghapus kandidat dari database.');
+        // Fallback: Hapus langsung via Firebase Web SDK Client Browser jika server error
+        try {
+          const { doc, deleteDoc } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+          await deleteDoc(doc(fdb, 'candidates', String(targetId)));
+        } catch (fsClientErr) {
+          console.warn('[Client SDK Delete Candidate Error]:', fsClientErr);
+          fetchCandidatesData();
+          alert('Gagal menghapus kandidat dari database.');
+        }
       }
     } catch (err) {
-      fetchCandidatesData();
-      alert('Terjadi kesalahan koneksi.');
+      // Fallback koneksi: coba hapus via Client SDK
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        const { db: fdb } = await import('@/lib/firebase');
+        await deleteDoc(doc(fdb, 'candidates', String(targetId)));
+      } catch (fsClientErr) {
+        fetchCandidatesData();
+        alert('Terjadi kesalahan koneksi.');
+      }
     } finally {
       setIsDeleting(false);
       setDeletingCandidate(null);

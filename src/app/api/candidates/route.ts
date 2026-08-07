@@ -262,11 +262,15 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE /api/candidates - Hapus Paslon
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    let id = searchParams.get('id');
+
+    if (!id) {
+      const body = await request.json().catch(() => ({}));
+      id = body?.id ? String(body.id) : null;
+    }
 
     if (!id) {
       return NextResponse.json(
