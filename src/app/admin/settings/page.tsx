@@ -74,8 +74,8 @@ export default function SettingsAdminPage() {
     try {
       // Fetch pengaturan dan data akun admin secara PARALEL (2x lebih cepat)
       const [res, adminRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/admin/account'),
+        fetch('/api/settings', { cache: 'no-store' }),
+        fetch('/api/admin/account', { cache: 'no-store' }),
       ]);
 
       const [json, adminJson] = await Promise.all([

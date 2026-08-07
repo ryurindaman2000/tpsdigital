@@ -58,7 +58,7 @@ export default function VoterLoginPage() {
       if (localBanner) setBannerUrl(localBanner);
     }
 
-    fetch('/api/settings')
+    fetch('/api/settings', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
