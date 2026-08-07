@@ -104,9 +104,12 @@ export default function ReportsAdminPage() {
       );
 
       if (candidatesJson.success && Array.isArray(candidatesJson.data) && candidatesJson.data.length > 0) {
+        const totalValidVotes = candidatesJson.data.reduce((acc: number, c: any) => acc + (c.votesCount || 0), 0);
+        const denominator = totalValidVotes > 0 ? totalValidVotes : votedV;
+
         const mapped: CandidateReport[] = candidatesJson.data.map((c: any) => {
-          const count = c.votesCount || c._count?.votes || 0;
-          const pct = votedV > 0 ? ((count / votedV) * 100).toFixed(1) + '%' : '0%';
+          const count = c.votesCount || 0;
+          const pct = denominator > 0 ? ((count / denominator) * 100).toFixed(1) + '%' : '0%';
           return {
             id: c.id,
             candidateNumber: c.candidateNumber,

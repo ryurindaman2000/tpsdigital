@@ -11,7 +11,24 @@ export async function GET() {
       orderBy: { candidateNumber: 'asc' },
     });
 
-    return NextResponse.json({ success: true, data: candidates });
+    const votes = await db.vote.findMany({
+      where: { isValid: true },
+      select: { candidateId: true },
+    });
+
+    const data = candidates.map((c: any) => {
+      const votesCount = votes.filter(
+        (v: any) =>
+          Number(v.candidateId) === Number(c.id) ||
+          Number(v.candidateId) === Number(c.candidateNumber)
+      ).length;
+      return {
+        ...c,
+        votesCount,
+      };
+    });
+
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Error fetching candidates:', error);
     return NextResponse.json(

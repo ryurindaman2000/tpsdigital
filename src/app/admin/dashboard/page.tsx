@@ -105,6 +105,9 @@ export default function AdminDashboardPage() {
       year: 'numeric',
     });
 
+    const totalValidVotesInModal = candidatesList.reduce((acc, c) => acc + (c.votesCount || 0), 0);
+    const denominatorModal = totalValidVotesInModal > 0 ? totalValidVotesInModal : stats.hasVotedCount;
+
     const candidateRowsHtml =
       candidatesList.length === 0
         ? `<tr><td colspan="4" style="padding:12px; text-align:center; color:#64748b; font-style:italic;">Belum ada data pasangan calon.</td></tr>`
@@ -116,7 +119,7 @@ export default function AdminDashboardPage() {
         <td style="padding:8px 12px; border-right:1px solid #0f172a; border-bottom:1px solid #0f172a; font-weight:bold;">${c.chairmanName} ${c.viceChairmanName ? '& ' + c.viceChairmanName : ''}</td>
         <td style="padding:8px 12px; border-right:1px solid #0f172a; border-bottom:1px solid #0f172a; text-align:center; font-family:monospace; font-weight:bold; color:#047857;">${c.votesCount || 0} Suara</td>
         <td style="padding:8px 12px; border-bottom:1px solid #0f172a; text-align:center; font-family:monospace; font-weight:bold;">${
-          stats.hasVotedCount > 0 ? (((c.votesCount || 0) / stats.hasVotedCount) * 100).toFixed(1) + '%' : '0%'
+          denominatorModal > 0 ? (((c.votesCount || 0) / denominatorModal) * 100).toFixed(1) + '%' : '0%'
         }</td>
       </tr>
     `

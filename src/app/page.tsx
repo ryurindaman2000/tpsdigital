@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Upload, Eye, EyeOff } from 'lucide-react';
+import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 export default function VoterLoginPage() {
   const router = useRouter();
@@ -241,15 +241,6 @@ export default function VoterLoginPage() {
   const handleCloseQrModal = () => {
     stopCamera();
     setIsQrModalOpen(false);
-  };
-
-  // Handler Upload File Gambar QR Code dari HP/Laptop
-  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const fileNameClean = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
-      handleQrDataReceived(fileNameClean);
-    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -524,26 +515,6 @@ export default function VoterLoginPage() {
                   <p className="text-xs text-slate-300 leading-relaxed max-w-xs">{cameraError}</p>
                 </div>
               )}
-            </div>
-
-            {/* Pilihan Opsional: Unggah Foto QR dari Galeri HP / Laptop */}
-            <div className="space-y-3">
-              <div className="relative text-center">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-white px-2">
-                  Atau Unggah Gambar QR dari HP
-                </span>
-              </div>
-
-              <label className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer">
-                <Upload className="w-4 h-4 text-emerald-600" />
-                <span>Pilih Foto QR dari Galeri</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleQrFileUpload}
-                  className="hidden"
-                />
-              </label>
             </div>
 
             {/* Close Button */}
