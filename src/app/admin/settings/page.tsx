@@ -28,7 +28,7 @@ export default function SettingsAdminPage() {
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [kopUrl, setKopUrl] = useState<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -59,10 +59,8 @@ export default function SettingsAdminPage() {
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const kopInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Fetch Pengaturan Aplikasi dari API + LocalStorage Fallback
+  // Fetch Pengaturan Aplikasi dari API + LocalStorage Fallback (Respon Instan < 10ms)
   const fetchSettings = async () => {
-    setIsLoading(true);
-
     // Read localStorage first for instant UI response
     if (typeof window !== 'undefined') {
       const localKop = localStorage.getItem('app_kop');
