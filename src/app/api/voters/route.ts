@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { db, writeAuditLog } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Helper: Hasilkan Password Acak 6 Karakter Unik (Huruf Kapital + Angka)
 function generateRandomPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Hindari karakter I, O, 0, 1 yang membingungkan saat dicetak

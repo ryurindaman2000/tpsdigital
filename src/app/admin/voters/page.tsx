@@ -253,8 +253,8 @@ export default function AdminVotersPage() {
   const fetchVotersData = async () => {
     try {
       const [votersRes, settingsRes] = await Promise.all([
-        fetch('/api/voters'),
-        fetch('/api/settings'),
+        fetch('/api/voters', { cache: 'no-store' }),
+        fetch('/api/settings', { cache: 'no-store' }),
       ]);
 
       const [votersJson, settingsJson] = await Promise.all([
