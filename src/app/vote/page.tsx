@@ -10,6 +10,8 @@ import {
   AlertCircle,
   LoaderCircle,
   HelpCircle,
+  Info,
+  X,
 } from 'lucide-react';
 
 interface Candidate {
@@ -35,6 +37,7 @@ function VotingBoothContent() {
   const [voterName, setVoterName] = useState<string>('Pemilih TPS');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -251,13 +254,13 @@ function VotingBoothContent() {
                   </div>
                 </div>
 
-                {/* Vision & Mission */}
-                <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600">
+                {/* Vision & Mission Preview */}
+                <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 flex-1">
                   {paslon.vision && (
                     <div>
                       <strong className="text-slate-800 block mb-0.5">Visi:</strong>
                       <p className="line-clamp-2 italic text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                        {paslon.vision}
+                        "{paslon.vision}"
                       </p>
                     </div>
                   )}
@@ -265,11 +268,21 @@ function VotingBoothContent() {
                   {paslon.mission && (
                     <div>
                       <strong className="text-slate-800 block mb-0.5">Misi:</strong>
-                      <p className="line-clamp-3 whitespace-pre-line text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                      <p className="line-clamp-2 whitespace-pre-line text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200">
                         {paslon.mission}
                       </p>
                     </div>
                   )}
+
+                  {/* Tombol Selengkapnya */}
+                  <button
+                    type="button"
+                    onClick={() => setDetailCandidate(paslon)}
+                    className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200 mt-2"
+                  >
+                    <Info className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Lihat Detail Visi & Misi Selengkapnya</span>
+                  </button>
                 </div>
 
                 {/* Button Choose */}
@@ -309,6 +322,130 @@ function VotingBoothContent() {
           </a>
         </span>
       </footer>
+
+      {/* MODAL: Detail Profil Paslon, Visi & Misi Selengkapnya */}
+      {detailCandidate && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-900 max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-black rounded-lg text-xs border border-emerald-200 inline-block mb-1">
+                  PASLON 0{detailCandidate.candidateNumber}
+                </span>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  Profil Paslon & Visi Misi Lengkap
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailCandidate(null)}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Photos Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center space-y-2">
+                <div className="w-full h-48 sm:h-56 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 p-1">
+                  {detailCandidate.chairmanPhoto ? (
+                    <img
+                      src={detailCandidate.chairmanPhoto}
+                      alt={detailCandidate.chairmanName || detailCandidate.name}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
+                      Foto Ketua
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 block">
+                    Calon Ketua
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    {detailCandidate.chairmanName || detailCandidate.name.split('&')[0]?.trim() || detailCandidate.name}
+                  </h4>
+                </div>
+              </div>
+
+              <div className="text-center space-y-2">
+                <div className="w-full h-48 sm:h-56 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 p-1">
+                  {detailCandidate.viceChairmanPhoto ? (
+                    <img
+                      src={detailCandidate.viceChairmanPhoto}
+                      alt={detailCandidate.viceChairmanName || ''}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
+                      Foto Wakil
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">
+                    Calon Wakil
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    {detailCandidate.viceChairmanName || (detailCandidate.name.includes('&') ? detailCandidate.name.split('&')[1]?.trim() : '')}
+                  </h4>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Visi */}
+            {detailCandidate.vision && (
+              <div className="space-y-1.5 bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/60">
+                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                  📌 Visi Pasangan Calon:
+                </h4>
+                <p className="text-xs text-slate-700 italic leading-relaxed whitespace-pre-line font-medium">
+                  "{detailCandidate.vision}"
+                </p>
+              </div>
+            )}
+
+            {/* Full Misi */}
+            {detailCandidate.mission && (
+              <div className="space-y-1.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  🎯 Misi Pasangan Calon:
+                </h4>
+                <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">
+                  {detailCandidate.mission}
+                </p>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDetailCandidate(null)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200"
+              >
+                Tutup Detail
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCandidate(detailCandidate);
+                  setDetailCandidate(null);
+                  setIsSubmitModalOpen(true);
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Pilih Paslon Ini</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Konfirmasi Pilihan Suara */}
       {isSubmitModalOpen && selectedCandidate && (
