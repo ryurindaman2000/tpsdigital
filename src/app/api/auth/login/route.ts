@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     if (voter.hasVoted) {
       writeAuditLog('LOGIN_FAILED', trimmedNim, '127.0.0.1', 'Hak pilih sudah digunakan').catch(() => {});
       return NextResponse.json(
-        { message: 'Hak pilih dengan NIM ini telah digunakan. Anda tidak dapat memilih kembali.' },
+        { message: 'Hak pilih ini telah digunakan. Anda tidak dapat memilih kembali.' },
         { status: 403 }
       );
     }
