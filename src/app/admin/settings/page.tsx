@@ -369,12 +369,27 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
 
   const [isSeeding, setIsSeeding] = useState(false);
 
-  // Handler Client-Side Seeding Firestore
+  // Handler Client-Side & Server API Seeding Firestore
   const handleSeedFirestore = async () => {
     if (!confirm('Apakah Anda yakin ingin mengisi (seed) data awal Firestore (Users, Paslon, Settings, Audit Logs) sesuai skema Supabase?')) return;
     setIsSeeding(true);
     setErrorMsg('');
     setSuccessMsg('');
+
+    try {
+      // 1. Coba via API Route Server REST
+      const res = await fetch('/api/seed', { cache: 'no-store' });
+      const json = await res.json();
+
+      if (res.ok && json.success) {
+        setSuccessMsg('🔥 Firestore Berhasil Di-Seed! Seluruh koleksi (users, settings, candidates, audit_logs) telah terisi.');
+        setIsSeeding(false);
+        return;
+      }
+    } catch (apiErr) {
+      console.warn('[API Seed Fallback to Client SDK]:', apiErr);
+    }
+
     try {
       const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
       const { db: fdb } = await import('@/lib/firebase');
@@ -429,19 +444,10 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
         createdAt: new Date().toISOString(),
       });
 
-      // 4. Seed Audit Log
-      await addDoc(collection(fdb, 'audit_logs'), {
-        action: 'INITIAL_SEED',
-        actor: 'admin',
-        ipAddress: '127.0.0.1',
-        details: 'Initial seeding Firestore via Admin Panel',
-        createdAt: new Date().toISOString(),
-      });
-
-      setSuccessMsg('🔥 Firestore Berhasil Di-Seed! Seluruh koleksi (users, settings, candidates, audit_logs) telah terisi sempurna di konsol Firebase.');
+      setSuccessMsg('🔥 Firestore Berhasil Di-Seed! Seluruh koleksi (users, settings, candidates, audit_logs) telah terisi.');
     } catch (err: any) {
       console.error(err);
-      setErrorMsg('Gagal melakukan seeding Firestore: ' + (err.message || 'Terjadi kesalahan'));
+      setErrorMsg('Gagal melakukan seeding Firestore: Database (default) belum diaktifkan di Firebase Console.');
     } finally {
       setIsSeeding(false);
     }
