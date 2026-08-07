@@ -1,19 +1,23 @@
 import { db } from './firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 export async function getFirestoreStats() {
   try {
     // 1. Fetch Users (Voters)
     const usersRef = collection(db, 'users');
-    const votersSnap = await getDocs(query(usersRef, where('role', '==', 'VOTER')));
-    const totalVoters = votersSnap.size;
+    let votersSnap;
+    try {
+      votersSnap = await getDocs(query(usersRef, where('role', '==', 'VOTER')));
+    } catch {
+      votersSnap = await getDocs(usersRef);
+    }
 
-    const votedSnap = await getDocs(query(usersRef, where('role', '==', 'VOTER'), where('hasVoted', '==', true)));
-    const hasVotedUserCount = votedSnap.size;
+    const totalVoters = votersSnap.docs.filter((doc) => doc.data().role === 'VOTER').length;
+    const hasVotedUserCount = votersSnap.docs.filter((doc) => doc.data().role === 'VOTER' && doc.data().hasVoted === true).length;
 
     // 2. Fetch Candidates
     const candidatesRef = collection(db, 'candidates');
-    const candidatesSnap = await getDocs(query(candidatesRef, orderBy('candidateNumber', 'asc')));
+    const candidatesSnap = await getDocs(candidatesRef);
     
     let candidatesList: any[] = [];
     if (!candidatesSnap.empty) {
@@ -21,15 +25,19 @@ export async function getFirestoreStats() {
         candidatesList.push({ id: docSnap.id, ...docSnap.data() });
       });
     }
+    candidatesList.sort((a, b) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
 
     // 3. Fetch Votes
     const votesRef = collection(db, 'votes');
-    const votesSnap = await getDocs(query(votesRef, where('isValid', '==', true)));
+    const votesSnap = await getDocs(votesRef);
     
     let votesList: any[] = [];
     if (!votesSnap.empty) {
       votesSnap.forEach((docSnap) => {
-        votesList.push(docSnap.data());
+        const v = docSnap.data();
+        if (v.isValid !== false) {
+          votesList.push(v);
+        }
       });
     }
 

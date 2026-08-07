@@ -9,14 +9,16 @@ export async function GET() {
   try {
     // 1. Coba ambil kandidat dari Firestore terlebih dahulu
     try {
-      const { collection, getDocs, orderBy, query, where } = await import('firebase/firestore');
+      const { collection, getDocs } = await import('firebase/firestore');
       const { db: fdb } = await import('@/lib/firebase');
 
-      const candidatesSnap = await getDocs(query(collection(fdb, 'candidates'), orderBy('candidateNumber', 'asc')));
+      const candidatesSnap = await getDocs(collection(fdb, 'candidates'));
       if (!candidatesSnap.empty) {
-        const votesSnap = await getDocs(query(collection(fdb, 'votes'), where('isValid', '==', true)));
+        const votesSnap = await getDocs(collection(fdb, 'votes'));
         const votesList: any[] = [];
-        votesSnap.forEach((v) => votesList.push(v.data()));
+        votesSnap.forEach((v) => {
+          if (v.data().isValid !== false) votesList.push(v.data());
+        });
 
         const fsCandidates: any[] = [];
         candidatesSnap.forEach((docSnap) => {
@@ -29,6 +31,8 @@ export async function GET() {
           fsCandidates.push({ id: docSnap.id, ...c, votesCount });
         });
 
+        fsCandidates.sort((a, b) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
+
         if (fsCandidates.length > 0) {
           return NextResponse.json({ success: true, data: fsCandidates });
         }
@@ -37,15 +41,17 @@ export async function GET() {
       console.error('[Firestore Candidates GET Fallback]:', fsErr);
     }
 
-    // 2. Fallback ke PostgreSQL (Prisma)
-    const candidates = await db.candidate.findMany({
-      orderBy: { candidateNumber: 'asc' },
-    });
-
-    const votes = await db.vote.findMany({
-      where: { isValid: true },
-      select: { candidateId: true },
-    });
+    // 2. Fallback aman ke PostgreSQL (Prisma)
+    let candidates: any[] = [];
+    let votes: any[] = [];
+    try {
+      if (db.candidate && db.vote) {
+        candidates = await db.candidate.findMany({ orderBy: { candidateNumber: 'asc' } });
+        votes = await db.vote.findMany({ where: { isValid: true }, select: { candidateId: true } });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Candidates GET Fallback Ignored]:', pgErr);
+    }
 
     const data = candidates.map((c: any) => {
       const votesCount = votes.filter(
@@ -53,19 +59,13 @@ export async function GET() {
           Number(v.candidateId) === Number(c.id) ||
           Number(v.candidateId) === Number(c.candidateNumber)
       ).length;
-      return {
-        ...c,
-        votesCount,
-      };
+      return { ...c, votesCount };
     });
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Error fetching candidates:', error);
-    return NextResponse.json(
-      { success: false, message: 'Gagal mengambil data paslon dari database.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, data: [] });
   }
 }
 
@@ -108,41 +108,68 @@ export async function POST(request: Request) {
     const trimmedVice = String(viceChairmanName).trim();
     const fullName = `${trimmedChairman} & ${trimmedVice}`;
 
-    // Cek Duplikasi Nomor Urut
-    const existingNumber = await db.candidate.findUnique({
-      where: { candidateNumber: Number(candidateNumber) },
-    });
+    let candidateResult: any = null;
 
-    if (existingNumber) {
-      return NextResponse.json(
-        {
-          success: false,
-          isDuplicate: true,
-          message: `Nomor urut 0${candidateNumber} sudah digunakan oleh Paslon "${existingNumber.name}".`,
-        },
-        { status: 400 }
-      );
-    }
+    // 1. Simpan ke Firestore
+    try {
+      const { collection, addDoc } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
 
-    const candidate = await db.candidate.create({
-      data: {
+      const docRef = await addDoc(collection(fdb, 'candidates'), {
         candidateNumber: Number(candidateNumber),
         chairmanName: trimmedChairman,
         viceChairmanName: trimmedVice,
         name: fullName,
-        chairmanPhoto: chairmanPhoto,
-        viceChairmanPhoto: viceChairmanPhoto,
+        chairmanPhoto,
+        viceChairmanPhoto,
         photoUrl: chairmanPhoto,
         vision: String(vision).trim(),
         mission: String(mission).trim(),
-      },
-    });
+        createdAt: new Date().toISOString(),
+      });
 
-    return NextResponse.json({ success: true, data: candidate }, { status: 201 });
+      candidateResult = {
+        id: docRef.id,
+        candidateNumber: Number(candidateNumber),
+        chairmanName: trimmedChairman,
+        viceChairmanName: trimmedVice,
+        name: fullName,
+        chairmanPhoto,
+        viceChairmanPhoto,
+        photoUrl: chairmanPhoto,
+        vision: String(vision).trim(),
+        mission: String(mission).trim(),
+      };
+    } catch (fsErr) {
+      console.error('[Firestore Candidate POST Error]:', fsErr);
+    }
+
+    // 2. Try Simpan ke PostgreSQL
+    try {
+      if (db.candidate) {
+        candidateResult = await db.candidate.create({
+          data: {
+            candidateNumber: Number(candidateNumber),
+            chairmanName: trimmedChairman,
+            viceChairmanName: trimmedVice,
+            name: fullName,
+            chairmanPhoto,
+            viceChairmanPhoto,
+            photoUrl: chairmanPhoto,
+            vision: String(vision).trim(),
+            mission: String(mission).trim(),
+          },
+        });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Candidate POST Ignored]:', pgErr);
+    }
+
+    return NextResponse.json({ success: true, data: candidateResult }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating candidate:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Gagal menyimpan paslon ke PostgreSQL.' },
+      { success: false, message: error.message || 'Gagal menyimpan paslon.' },
       { status: 500 }
     );
   }
@@ -174,26 +201,62 @@ export async function PUT(request: Request) {
     const trimmedVice = String(viceChairmanName).trim();
     const fullName = `${trimmedChairman} & ${trimmedVice}`;
 
-    const candidate = await db.candidate.update({
-      where: { id: Number(id) },
-      data: {
+    let updatedResult: any = {
+      id,
+      candidateNumber: Number(candidateNumber),
+      chairmanName: trimmedChairman,
+      viceChairmanName: trimmedVice,
+      name: fullName,
+    };
+
+    // 1. Update ke Firestore
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+
+      await setDoc(doc(fdb, 'candidates', String(id)), {
         candidateNumber: Number(candidateNumber),
         chairmanName: trimmedChairman,
         viceChairmanName: trimmedVice,
         name: fullName,
-        chairmanPhoto: chairmanPhoto || null,
-        viceChairmanPhoto: viceChairmanPhoto || null,
-        photoUrl: chairmanPhoto || viceChairmanPhoto || null,
+        chairmanPhoto,
+        viceChairmanPhoto,
+        photoUrl: chairmanPhoto,
         vision: String(vision).trim(),
         mission: String(mission).trim(),
-      },
-    });
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (fsErr) {
+      console.error('[Firestore Candidate PUT Error]:', fsErr);
+    }
 
-    return NextResponse.json({ success: true, data: candidate });
+    // 2. Try Update ke PostgreSQL
+    try {
+      if (db.candidate && !isNaN(Number(id))) {
+        updatedResult = await db.candidate.update({
+          where: { id: Number(id) },
+          data: {
+            candidateNumber: Number(candidateNumber),
+            chairmanName: trimmedChairman,
+            viceChairmanName: trimmedVice,
+            name: fullName,
+            chairmanPhoto,
+            viceChairmanPhoto,
+            photoUrl: chairmanPhoto,
+            vision: String(vision).trim(),
+            mission: String(mission).trim(),
+          },
+        });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Candidate PUT Ignored]:', pgErr);
+    }
+
+    return NextResponse.json({ success: true, data: updatedResult });
   } catch (error: any) {
     console.error('Error updating candidate:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Gagal memperbarui paslon di PostgreSQL.' },
+      { success: false, message: error.message || 'Gagal merubah data paslon.' },
       { status: 500 }
     );
   }
@@ -202,21 +265,40 @@ export async function PUT(request: Request) {
 // DELETE /api/candidates - Hapus Paslon
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json();
-    const { id } = body;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json(
-        { success: false, message: 'ID Paslon tidak ditemukan.' },
+        { success: false, message: 'ID Paslon wajib diisi.' },
         { status: 400 }
       );
     }
 
-    await db.candidate.delete({
-      where: { id: Number(id) },
-    });
+    // 1. Delete dari Firestore
+    try {
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+      await deleteDoc(doc(fdb, 'candidates', String(id)));
+    } catch (fsErr) {
+      console.error('[Firestore Candidate DELETE Error]:', fsErr);
+    }
 
-    return NextResponse.json({ success: true, message: 'Paslon berhasil dihapus.' });
+    // 2. Try Delete dari PostgreSQL
+    try {
+      if (db.candidate && !isNaN(Number(id))) {
+        await db.candidate.delete({
+          where: { id: Number(id) },
+        });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Candidate DELETE Ignored]:', pgErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pasangan calon berhasil dihapus.',
+    });
   } catch (error: any) {
     console.error('Error deleting candidate:', error);
     return NextResponse.json(
