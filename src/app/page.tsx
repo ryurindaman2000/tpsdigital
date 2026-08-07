@@ -344,13 +344,13 @@ export default function VoterLoginPage() {
 
         {/* SISI KIRI: BANNER GAMBAR UTAMA (BISA DI-EDIT DI ADMIN / DIPANGGIL DARI public/images/default-banner.jpg) */}
         <div className="lg:col-span-7 w-full flex flex-col justify-center space-y-6">
-          <div className="w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative group min-h-[450px] lg:min-h-[550px]">
+          <div className="w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative group">
             <img
               src={activeBannerSrc}
               alt="Banner E-Voting TPS"
               loading="lazy"
               decoding="async"
-              className="w-full h-[320px] sm:h-[450px] lg:h-[550px] object-contain bg-slate-50 rounded-3xl"
+              className="w-full h-auto max-h-[520px] object-cover rounded-3xl"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
