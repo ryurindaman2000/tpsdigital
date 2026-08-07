@@ -333,14 +333,7 @@ export default function VoterLoginPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/live-count"
-            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-200 transition shadow-sm"
-          >
-            <TrendingUp className="w-4 h-4 text-emerald-700" />
-            <span className="hidden sm:inline">Real-Time Quick Count</span>
-            <span className="sm:hidden">Quick Count</span>
-          </Link>
+          {/* Header Actions */}
         </div>
       </header>
 
@@ -467,6 +460,17 @@ export default function VoterLoginPage() {
                     </>
                   )}
                 </button>
+              </div>
+
+              {/* Tombol Memanjang Highlight: Real-Time Quick Count di Bawah Form */}
+              <div className="pt-2 border-t border-slate-100">
+                <Link
+                  href="/live-count"
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-600/30 tracking-wide uppercase group animate-pulse hover:animate-none"
+                >
+                  <TrendingUp className="w-4.5 h-4.5 text-white transition group-hover:scale-110 shrink-0" />
+                  <span>Real-Time Quick Count (Monitor Publik) →</span>
+                </Link>
               </div>
             </form>
           </div>
