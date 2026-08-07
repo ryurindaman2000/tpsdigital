@@ -71,18 +71,24 @@ export async function getFsCollection(collectionName: string) {
   }
 }
 
-// 3. Set / Patch Document
+// 3. Set / Patch Document with updateMask for Firestore REST API v1
 export async function setFsDoc(collectionName: string, docId: string, data: Record<string, any>) {
   try {
     const payload = encodeFirestoreFields(data);
-    const res = await fetch(`${BASE_URL}/${collectionName}/${docId}?key=${API_KEY}`, {
+    const keys = Object.keys(data);
+    const updateMaskParams = keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+    const url = `${BASE_URL}/${collectionName}/${docId}?${updateMaskParams}&key=${API_KEY}`;
+
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       cache: 'no-store',
     });
+
     if (!res.ok) {
-      console.error(`[FsRest setDoc Error ${res.status}]:`, await res.text());
+      const errText = await res.text();
+      console.error(`[FsRest setDoc Error ${res.status}]:`, errText);
       return false;
     }
     return true;
