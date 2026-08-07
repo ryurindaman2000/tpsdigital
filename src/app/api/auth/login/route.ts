@@ -32,34 +32,12 @@ export async function POST(request: Request) {
     const trimmedPass = String(password).trim();
     const lowerNim = trimmedNim.toLowerCase();
 
-    // ── 1. OTENTIKASI ADMIN (POSTGRESQL DATABASE SUPABASE) ──
-    let dbAdmin: any = null;
-    try {
-      dbAdmin = await db.user.findFirst({
-        where: { role: 'ADMIN', nim: lowerNim },
-      });
-    } catch (e) {
-      console.error('[Login DB Admin Error]:', e);
-    }
-
     const envAdminUsername = process.env.ADMIN_USERNAME ? process.env.ADMIN_USERNAME.toLowerCase() : 'admin';
     const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin';
 
-    let isAdminValid = false;
-    let activeAdminName = 'Panitia Pemilihan (Admin)';
-    let isAdminAccount = false;
-
-    if (dbAdmin) {
-      isAdminAccount = true;
-      activeAdminName = dbAdmin.name || dbAdmin.nim;
-      isAdminValid = await comparePassword(trimmedPass, dbAdmin.randomPassword);
-    } else if (lowerNim === envAdminUsername) {
-      isAdminAccount = true;
-      isAdminValid = (trimmedPass === envAdminPassword);
-    }
-
-    if (isAdminAccount) {
-      if (!isAdminValid) {
+    // ── 1. FAST-PATH OTENTIKASI ADMIN ENV (INSTANT RESPONSE < 50ms) ──
+    if (lowerNim === envAdminUsername) {
+      if (trimmedPass !== envAdminPassword) {
         writeAuditLog('LOGIN_FAILED', `admin:${trimmedNim}`, '127.0.0.1', 'Password admin salah').catch(() => {});
         return NextResponse.json(
           { message: 'Password Admin tidak sesuai.' },
@@ -69,7 +47,7 @@ export async function POST(request: Request) {
 
       const adminUser = {
         nim: trimmedNim,
-        name: activeAdminName,
+        name: 'Panitia Pemilihan (Admin)',
         role: 'ADMIN' as const,
       };
 
@@ -78,12 +56,50 @@ export async function POST(request: Request) {
         message: 'Login Admin Berhasil',
         role: 'ADMIN',
         redirectUrl: '/admin/dashboard',
-        user: { nim: trimmedNim, name: activeAdminName, role: 'ADMIN' },
+        user: { nim: trimmedNim, name: 'Panitia Pemilihan (Admin)', role: 'ADMIN' },
       });
 
       await setSessionCookie(response, adminUser);
       writeAuditLog('LOGIN_SUCCESS', trimmedNim, '127.0.0.1', 'Admin login berhasil').catch(() => {});
+      return response;
+    }
 
+    // ── 2. OTENTIKASI ADMIN DATABASE (POSTGRESQL) ──
+    let dbAdmin: any = null;
+    try {
+      dbAdmin = await db.user.findFirst({
+        where: { role: 'ADMIN', nim: lowerNim },
+      });
+    } catch (e) {
+      console.error('[Login DB Admin Error]:', e);
+    }
+
+    if (dbAdmin) {
+      const isValid = await comparePassword(trimmedPass, dbAdmin.randomPassword);
+      if (!isValid) {
+        writeAuditLog('LOGIN_FAILED', `admin:${trimmedNim}`, '127.0.0.1', 'Password admin salah').catch(() => {});
+        return NextResponse.json(
+          { message: 'Password Admin tidak sesuai.' },
+          { status: 401 }
+        );
+      }
+
+      const adminUser = {
+        nim: trimmedNim,
+        name: dbAdmin.name || dbAdmin.nim,
+        role: 'ADMIN' as const,
+      };
+
+      const response = NextResponse.json({
+        success: true,
+        message: 'Login Admin Berhasil',
+        role: 'ADMIN',
+        redirectUrl: '/admin/dashboard',
+        user: { nim: trimmedNim, name: dbAdmin.name || dbAdmin.nim, role: 'ADMIN' },
+      });
+
+      await setSessionCookie(response, adminUser);
+      writeAuditLog('LOGIN_SUCCESS', trimmedNim, '127.0.0.1', 'Admin login berhasil').catch(() => {});
       return response;
     }
 
