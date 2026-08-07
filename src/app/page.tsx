@@ -285,7 +285,6 @@ export default function VoterLoginPage() {
                 className="w-full h-auto object-contain drop-shadow-md"
               />
             </div>
-          </div>
 
             {/* Premium Animated Loading Bar */}
             <div className="w-44 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-4 border border-slate-200/80 shadow-inner">
