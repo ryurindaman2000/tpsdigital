@@ -332,13 +332,13 @@ export default function LiveCountPage() {
           )}
         </div>
 
-        {/* Tombol Highlight Card: Kembali ke Halaman Login (di atas Footer) */}
-        <div className="mt-8">
+        {/* Tombol Ringkas Kecil: Kembali ke Halaman Login (di atas Footer) */}
+        <div className="mt-6 text-center">
           <Link
             href="/"
-            className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-600/30 tracking-wide uppercase group animate-pulse hover:animate-none"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs border border-emerald-200 transition shadow-sm"
           >
-            <span>← Kembali ke Halaman Utama / Login Pemilih</span>
+            <span>← Kembali ke Halaman Login</span>
           </Link>
         </div>
       </main>
