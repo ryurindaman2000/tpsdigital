@@ -115,10 +115,10 @@ export default function LiveCountPage() {
     // 1. Fetch awal
     fetchLiveStats();
 
-    // 2. Real-time Polling Otomatis Setiap 5 Detik sekali
+    // 2. Real-time Polling Otomatis Setiap 3 Detik sekali (Super Responsif)
     const pollInterval = setInterval(() => {
       fetchLiveStats();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, []);
