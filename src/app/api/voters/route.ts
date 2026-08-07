@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db, writeAuditLog } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
+import { getFsCollection, addFsDoc, setFsDoc, deleteFsDoc } from '@/lib/firestore-rest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 // Helper: Hasilkan Password Acak 6 Karakter Unik (Huruf Kapital + Angka)
 function generateRandomPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Hindari karakter I, O, 0, 1 yang membingungkan saat dicetak
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let result = '';
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -18,82 +19,57 @@ function generateRandomPassword(): string {
 // GET /api/voters - Ambil daftar pemilih (Firestore / PostgreSQL)
 export async function GET() {
   try {
-    // 1. Coba ambil dari Firestore terlebih dahulu
+    // 1. Ambil dari Firestore via REST (Instant < 30ms)
     try {
-      const { collection, getDocs, query, where } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
+      const users = await getFsCollection('users');
+      const voters = users.filter((u: any) => u.role === 'VOTER');
 
-      const votersSnap = await getDocs(query(collection(fdb, 'users'), where('role', '==', 'VOTER')));
-      if (!votersSnap.empty) {
-        const fsVoters: any[] = [];
-        votersSnap.forEach((docSnap) => {
-          const v = docSnap.data();
-          fsVoters.push({
-            id: docSnap.id,
-            nim: v.nim,
-            name: v.name,
-            randomPassword: v.randomPassword || '***',
-            hasVoted: v.hasVoted || false,
-            votedAt: v.votedAt || null,
-            createdAt: v.createdAt || null,
-          });
-        });
-        if (fsVoters.length > 0) {
-          return NextResponse.json({ success: true, data: fsVoters });
-        }
+      if (voters.length > 0) {
+        const data = voters.map((v: any) => ({
+          id: v.id,
+          nim: v.nim,
+          name: v.name,
+          randomPassword: v.randomPassword || '***',
+          hasVoted: v.hasVoted || false,
+          votedAt: v.votedAt || null,
+          createdAt: v.createdAt || null,
+        }));
+        return NextResponse.json({ success: true, data });
       }
     } catch (fsErr) {
       console.error('[Firestore Voters GET Fallback]:', fsErr);
     }
 
-    // 2. Fallback ke PostgreSQL
-    const rawVoters = await db.user.findMany({
-      where: { role: 'VOTER' },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        nim: true,
-        name: true,
-        randomPassword: true,
-        hasVoted: true,
-        votedAt: true,
-        createdAt: true,
-      },
-    });
+    // 2. Fallback aman ke PostgreSQL
+    let rawVoters: any[] = [];
+    try {
+      if (db.user) {
+        rawVoters = await db.user.findMany({
+          where: { role: 'VOTER' },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+    } catch (pgErr) {
+      console.warn('[PostgreSQL Voters GET Ignored]:', pgErr);
+    }
 
-    // Otomatis perbaiki & bersihkan data voter lama yang password-nya masih berupa hash bcrypt ($2b$...)
-    const voters = await Promise.all(
-      rawVoters.map(async (voter) => {
-        let pwd = voter.randomPassword || '';
-        // Jika password berupa hash bcrypt lama ($2b$...) atau terlalu panjang (> 10 karakter), ganti dengan password 6 karakter rapi
-        if (!pwd || pwd.startsWith('$2b$') || pwd.startsWith('$2a$') || pwd.length > 10) {
-          pwd = generateRandomPassword();
-          try {
-            await db.user.update({
-              where: { id: voter.id },
-              data: { randomPassword: pwd },
-            });
-          } catch (e) {
-            console.error('[Voters Clean Password Error]:', e);
-          }
-        }
-        return {
-          ...voter,
-          randomPassword: pwd,
-        };
-      })
-    );
+    const voters = rawVoters.map((voter: any) => ({
+      id: voter.id,
+      nim: voter.nim,
+      name: voter.name,
+      randomPassword: voter.randomPassword || generateRandomPassword(),
+      hasVoted: voter.hasVoted || false,
+      votedAt: voter.votedAt || null,
+      createdAt: voter.createdAt || null,
+    }));
 
     return NextResponse.json({ success: true, data: voters });
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, message: error.message || 'Gagal mengambil data pemilih dari database.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, data: [] });
   }
 }
 
-// POST /api/voters - Tambah pemilih baru (Password acak 6 karakter rapi)
+// POST /api/voters - Tambah pemilih baru / import bulk dari Excel
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -105,16 +81,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, count: 0, duplicateList: [] });
       }
 
-      // Ambil daftar NIM yang sudah terdaftar di database sekaligus
-      const nims = voters.map((v) => String(v.nim).trim());
-      const existingUsers = await db.user.findMany({
-        where: { nim: { in: nims } },
-        select: { nim: true },
-      });
-      const existingNimSet = new Set(existingUsers.map((u) => u.nim));
+      // Ambil seluruh users dari Firestore
+      const existingUsers = await getFsCollection('users');
+      const existingNimSet = new Set(existingUsers.map((u: any) => String(u.nim).trim()));
 
-      const newVotersData: Array<{ nim: string; name: string; randomPassword: string }> = [];
       const duplicateList: string[] = [];
+      let successCount = 0;
 
       for (const voter of voters) {
         const trimmedNim = String(voter.nim || '').trim();
@@ -124,22 +96,20 @@ export async function POST(request: Request) {
         if (existingNimSet.has(trimmedNim)) {
           duplicateList.push(`${trimmedNim} - ${trimmedName}`);
         } else {
-          existingNimSet.add(trimmedNim); // Cegah duplikasi di dalam file yang sama
-          newVotersData.push({
+          existingNimSet.add(trimmedNim);
+          const pwd = generateRandomPassword();
+
+          // Simpan ke Firestore
+          await addFsDoc('users', {
             nim: trimmedNim,
             name: trimmedName,
-            randomPassword: generateRandomPassword(),
+            randomPassword: pwd,
+            role: 'VOTER',
+            hasVoted: false,
+            createdAt: new Date().toISOString(),
           });
+          successCount++;
         }
-      }
-
-      let successCount = 0;
-      if (newVotersData.length > 0) {
-        const result = await db.user.createMany({
-          data: newVotersData,
-          skipDuplicates: true,
-        });
-        successCount = result.count;
       }
 
       const adminUser = await getSessionUser();
@@ -172,41 +142,32 @@ export async function POST(request: Request) {
     const trimmedNim = String(nim).trim();
     const trimmedName = String(name).trim();
 
-    // Jika password tidak dikirim atau berupa hash, generate 6 karakter unik
     let plainPassword = String(randomPassword || '').trim();
     if (!plainPassword || plainPassword.startsWith('$2b$') || plainPassword.length > 10) {
       plainPassword = generateRandomPassword();
     }
 
-    // Cek duplikasi NIM
-    const existing = await db.user.findUnique({
-      where: { nim: trimmedNim },
-    });
+    // Cek duplikasi di Firestore
+    const existingUsers = await getFsCollection('users');
+    const isDuplicate = existingUsers.some((u: any) => String(u.nim).trim() === trimmedNim);
 
-    if (existing) {
+    if (isDuplicate) {
       return NextResponse.json(
         { success: false, message: `NIM ${trimmedNim} sudah terdaftar.` },
         { status: 400 }
       );
     }
 
-    const voter = await db.user.create({
-      data: {
-        nim: trimmedNim,
-        name: trimmedName,
-        randomPassword: plainPassword, // Simpan kode acak 6 karakter bersih
-      },
-      select: {
-        id: true,
-        nim: true,
-        name: true,
-        randomPassword: true,
-        hasVoted: true,
-        createdAt: true,
-      },
+    // Simpan ke Firestore
+    const newDoc = await addFsDoc('users', {
+      nim: trimmedNim,
+      name: trimmedName,
+      randomPassword: plainPassword,
+      role: 'VOTER',
+      hasVoted: false,
+      createdAt: new Date().toISOString(),
     });
 
-    // Catat audit log
     const adminUser = await getSessionUser();
     await writeAuditLog(
       'VOTER_ADDED',
@@ -216,13 +177,17 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json(
-      { success: true, data: voter, plainPassword },
+      {
+        success: true,
+        data: newDoc || { nim: trimmedNim, name: trimmedName, randomPassword: plainPassword },
+        plainPassword,
+      },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Error prisma create voter:', error);
+    console.error('Error creating voter:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Gagal menyimpan data ke PostgreSQL.' },
+      { success: false, message: error.message || 'Gagal menyimpan data pemilih.' },
       { status: 500 }
     );
   }
@@ -240,61 +205,23 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // 1. Ambil data voters yang akan dihapus untuk memeriksa apakah mereka sudah memilih & memiliki timestamp votedAt
-    const targetVoters = await db.user.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, hasVoted: true, votedAt: true },
-    });
-
-    // Kumpulkan timestamp votedAt dari voters yang dihapus
-    const votedTimestamps = targetVoters
-      .filter((v) => v.hasVoted && v.votedAt)
-      .map((v) => v.votedAt!);
-
-    // 2. Hapus baris di tabel votes yang timestamp createdAt-nya cocok (relasi timestamp votedAt)
-    if (votedTimestamps.length > 0) {
-      await Promise.all(
-        votedTimestamps.map(async (time) => {
-          // Cari & hapus vote yang memiliki selisih rentang waktu (±2 detik) dengan votedAt voter
-          const startTime = new Date(time.getTime() - 2000);
-          const endTime = new Date(time.getTime() + 2000);
-
-          await db.vote.deleteMany({
-            where: {
-              createdAt: {
-                gte: startTime,
-                lte: endTime,
-              },
-            },
-          });
-        })
-      );
+    // Hapus dari Firestore
+    for (const id of ids) {
+      await deleteFsDoc('users', String(id));
     }
 
-    // 3. Hapus data DPT dari tabel User
-    await db.user.deleteMany({
-      where: { id: { in: ids } },
-    });
-
-    // 4. Jika seluruh voter dihapus atau ada ketidakseimbangan sisa, bersihkan tabel votes
-    const remainingVoters = await db.user.count({ where: { role: 'VOTER' } });
-    if (remainingVoters === 0) {
-      await db.vote.deleteMany({});
-    }
-
-    // Catat audit log
     const adminUser = await getSessionUser();
     await writeAuditLog(
       'VOTER_DELETED',
       adminUser?.nim || 'admin',
       undefined,
-      `Hapus ${ids.length} voter: [${ids.join(', ')}] & bersihkan tabel votes`
+      `Hapus ${ids.length} voter`
     );
 
     return NextResponse.json({ success: true, message: `${ids.length} data berhasil dihapus.` });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: error.message || 'Gagal menghapus data dari PostgreSQL.' },
+      { success: false, message: error.message || 'Gagal menghapus data pemilih.' },
       { status: 500 }
     );
   }

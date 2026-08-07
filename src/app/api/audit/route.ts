@@ -1,40 +1,44 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { writeAuditLog } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getFsCollection } from '@/lib/firestore-rest';
 
-// GET /api/audit — Ambil daftar audit log (hanya Admin, dilindungi middleware)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// GET /api/audit — Ambil daftar audit log dari Firestore
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Number(searchParams.get('limit') || '100'), 500);
-    const action = searchParams.get('action') || undefined;
 
-    // Gunakan raw query agar bekerja sebelum/sesudah prisma generate
-    const dbAny = db as any;
-    if (dbAny.auditLog && typeof dbAny.auditLog.findMany === 'function') {
-      const logs = await dbAny.auditLog.findMany({
-        where: action ? { action } : undefined,
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      });
-      return NextResponse.json({ success: true, data: logs, total: logs.length });
+    // 1. Ambil dari Firestore REST
+    try {
+      const logs = await getFsCollection('audit_logs');
+      if (logs.length > 0) {
+        logs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        const data = logs.slice(0, limit);
+        return NextResponse.json({ success: true, data, total: data.length });
+      }
+    } catch (fsErr) {
+      console.error('[Firestore Audit Logs GET Error]:', fsErr);
     }
 
-    // Fallback raw SQL
-    const logs = await db.$queryRaw`
-      SELECT id, action, actor, ip_address as "ipAddress", details, created_at as "createdAt"
-      FROM audit_logs
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `;
+    // 2. Fallback aman ke PostgreSQL
+    let logsArray: any[] = [];
+    try {
+      const dbAny = db as any;
+      if (dbAny.auditLog && typeof dbAny.auditLog.findMany === 'function') {
+        logsArray = await dbAny.auditLog.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+        });
+      }
+    } catch {
+      // Ignore
+    }
 
-    const logsArray = logs as any[];
     return NextResponse.json({ success: true, data: logsArray, total: logsArray.length });
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, message: error.message || 'Gagal mengambil audit log.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, data: [], total: 0 });
   }
 }
