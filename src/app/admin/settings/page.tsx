@@ -255,6 +255,41 @@ export default function SettingsAdminPage() {
     }
   };
 
+// Helper Kompresi Gambar Base64 agar Payload Ringan & Instan (< 100KB)
+function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: number, quality = 0.8): Promise<string> {
+  if (!base64Str || !base64Str.startsWith('data:image')) return Promise.resolve(base64Str);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => resolve(base64Str);
+    img.src = base64Str;
+  });
+}
+
   // Simpan Pengaturan ke API + LocalStorage
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,15 +303,19 @@ export default function SettingsAdminPage() {
 
     setIsSubmitting(true);
     try {
+      const compressedLogo = logoUrl ? await compressBase64Image(logoUrl, 500, 500, 0.8) : null;
+      const compressedBanner = bannerUrl ? await compressBase64Image(bannerUrl, 1280, 720, 0.8) : null;
+      const compressedKop = kopUrl ? await compressBase64Image(kopUrl, 1200, 350, 0.8) : null;
+
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           appName: appName.trim(),
           subTitle: subTitle.trim(),
-          logoUrl,
-          bannerUrl,
-          kopUrl,
+          logoUrl: compressedLogo,
+          bannerUrl: compressedBanner,
+          kopUrl: compressedKop,
         }),
       });
 
@@ -284,17 +323,20 @@ export default function SettingsAdminPage() {
 
       if (!res.ok || !json.success) {
         setErrorMsg(json.message || 'Gagal menyimpan pengaturan aplikasi.');
-        setIsSubmitting(false);
         return;
       }
+
+      if (compressedLogo) setLogoUrl(compressedLogo);
+      if (compressedBanner) setBannerUrl(compressedBanner);
+      if (compressedKop) setKopUrl(compressedKop);
 
       // Simpan ke LocalStorage agar langsung sinkron tanpa refresh
       if (typeof window !== 'undefined') {
         localStorage.setItem('app_name', appName.trim());
         localStorage.setItem('app_subtitle', subTitle.trim());
-        if (logoUrl) localStorage.setItem('app_logo', logoUrl);
-        if (bannerUrl) localStorage.setItem('app_banner', bannerUrl);
-        if (kopUrl) localStorage.setItem('app_kop', kopUrl);
+        if (compressedLogo) localStorage.setItem('app_logo', compressedLogo);
+        if (compressedBanner) localStorage.setItem('app_banner', compressedBanner);
+        if (compressedKop) localStorage.setItem('app_kop', compressedKop);
       }
 
       setSuccessMsg('Pengaturan nama aplikasi, logo, banner, dan kop surat berhasil disimpan!');
