@@ -218,7 +218,7 @@ function VotingBoothContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
                         Calon Ketua
                       </span>
-                      <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 break-words break-all">
                         {chairmanNameDisplay}
                       </h4>
                     </div>
@@ -241,7 +241,7 @@ function VotingBoothContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
                         Calon Wakil
                       </span>
-                      <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 break-words break-all">
                         {viceChairmanNameDisplay}
                       </h4>
                     </div>
@@ -320,8 +320,18 @@ function VotingBoothContent() {
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
                 Apakah Anda yakin ingin memberikan suara Anda kepada:
               </p>
-              <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-emerald-600 text-sm">
-                PASLON 0{selectedCandidate.candidateNumber}: {selectedCandidate.chairmanName || selectedCandidate.name}
+              <div className="mt-3 p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-bold text-center leading-relaxed break-words break-all max-h-36 overflow-y-auto">
+                <span className="block text-[11px] uppercase tracking-wider text-emerald-600 font-extrabold mb-1">
+                  PASLON 0{selectedCandidate.candidateNumber}
+                </span>
+                <span>
+                  {selectedCandidate.chairmanName || selectedCandidate.name.split('&')[0]?.trim() || selectedCandidate.name}
+                  {selectedCandidate.viceChairmanName
+                    ? ` & ${selectedCandidate.viceChairmanName}`
+                    : selectedCandidate.name.includes('&')
+                    ? ` & ${selectedCandidate.name.split('&')[1]?.trim()}`
+                    : ''}
+                </span>
               </div>
               <p className="text-[11px] text-amber-600 mt-2 font-medium">
                 ⚠️ Pilihan suara bersifat final dan tidak dapat diubah setelah dikonfirmasi.
