@@ -53,33 +53,119 @@ export default function AdminDashboardPage() {
     setIsBeritaAcaraModalOpen(true);
 
     try {
-      // 2. Refresh data terbaru di background
-      const [settingsRes, candidatesRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/candidates'),
+      // 2. Refresh data terbaru di background via API & Client SDK Fallback
+      const [settingsRes, candidatesRes, statsRes] = await Promise.all([
+        fetch('/api/settings', { cache: 'no-store' }),
+        fetch('/api/candidates', { cache: 'no-store' }),
+        fetch('/api/vote/stats', { cache: 'no-store' }),
       ]);
 
-      const [settingsJson, json] = await Promise.all([
+      const [settingsJson, candidatesJson, statsJson] = await Promise.all([
         settingsRes.json(),
         candidatesRes.json(),
+        statsRes.json(),
       ]);
 
-      if (settingsJson.success && settingsJson.data) {
-        if (settingsJson.data.kopUrl) {
-          setKopUrl(settingsJson.data.kopUrl);
-          if (typeof window !== 'undefined') localStorage.setItem('app_kop', settingsJson.data.kopUrl);
-        }
+      if (settingsJson.success && settingsJson.data?.kopUrl) {
+        setKopUrl(settingsJson.data.kopUrl);
+        if (typeof window !== 'undefined') localStorage.setItem('app_kop', settingsJson.data.kopUrl);
       }
 
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const mapped = json.data.map((c: any) => ({
-          id: c.id,
-          candidateNumber: c.candidateNumber,
-          chairmanName: c.chairmanName || c.name || `Paslon 0${c.candidateNumber}`,
-          viceChairmanName: c.viceChairmanName || '',
-          votesCount: c.votesCount || c._count?.votes || 0,
-        }));
-        setCandidatesList(mapped);
+      if (statsJson.success && statsJson.data) {
+        const newStats = {
+          totalVoters: statsJson.data.totalVoters || 0,
+          hasVotedCount: statsJson.data.hasVotedCount || 0,
+          turnoutPercent: statsJson.data.turnoutPercent || '0%',
+          totalCandidates: Array.isArray(statsJson.data.candidateVotes)
+            ? statsJson.data.candidateVotes.length
+            : 0,
+        };
+        if (newStats.totalVoters > 0) setStats(newStats);
+      }
+
+      if (candidatesJson.success && Array.isArray(candidatesJson.data) && candidatesJson.data.length > 0) {
+        const candMap = new Map();
+        candidatesJson.data.forEach((c: any) => {
+          const cNum = Number(c.candidateNumber) || 1;
+          candMap.set(cNum, {
+            id: c.id,
+            candidateNumber: cNum,
+            chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${cNum}`,
+            viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
+            votesCount: c.votesCount || c._count?.votes || c.voteCount || 0,
+          });
+        });
+        setCandidatesList(Array.from(candMap.values()).sort((a, b) => a.candidateNumber - b.candidateNumber));
+      }
+
+      // Fallback Langsung via Client-Side Firebase Web SDK
+      try {
+        const { collection, getDocs } = await import('firebase/firestore');
+        const { db: fdb } = await import('@/lib/firebase');
+
+        const [candSnap, votesSnap, userSnap, setSnap] = await Promise.all([
+          getDocs(collection(fdb, 'candidates')),
+          getDocs(collection(fdb, 'votes')),
+          getDocs(collection(fdb, 'users')),
+          getDocs(collection(fdb, 'settings')),
+        ]);
+
+        if (!setSnap.empty) {
+          const setObj = setSnap.docs[0].data();
+          if (setObj.kopUrl) {
+            setKopUrl(setObj.kopUrl);
+            if (typeof window !== 'undefined') localStorage.setItem('app_kop', setObj.kopUrl);
+          }
+        }
+
+        const votesList: any[] = [];
+        votesSnap.forEach((v) => {
+          if (v.data().isValid !== false) votesList.push(v.data());
+        });
+
+        const candsMap = new Map();
+        candSnap.forEach((d) => {
+          const c = d.data();
+          const cNum = Number(c.candidateNumber) || 1;
+          const vCount = votesList.filter(
+            (v: any) =>
+              String(v.candidateId) === String(d.id) || Number(v.candidateId) === cNum
+          ).length;
+
+          candsMap.set(cNum, {
+            id: d.id,
+            candidateNumber: cNum,
+            chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${cNum}`,
+            viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
+            votesCount: vCount,
+          });
+        });
+
+        const sortedCands = Array.from(candsMap.values()).sort((a, b) => a.candidateNumber - b.candidateNumber);
+        if (sortedCands.length > 0) setCandidatesList(sortedCands);
+
+        let totVoters = 0;
+        let votedVoters = 0;
+        userSnap.forEach((d) => {
+          const u = d.data();
+          if (u.role === 'VOTER') {
+            totVoters++;
+            if (u.hasVoted) votedVoters++;
+          }
+        });
+
+        const totalVotesBox = votesList.length;
+        const finalHasVoted = Math.max(votedVoters, totalVotesBox);
+        const newStatsObj = {
+          totalVoters: totVoters,
+          hasVotedCount: finalHasVoted,
+          turnoutPercent: totVoters > 0 ? `${Math.round((finalHasVoted / totVoters) * 100)}%` : '0%',
+          totalCandidates: sortedCands.length,
+        };
+
+        if (totVoters > 0) setStats(newStatsObj);
+      } catch (clientFsErr) {
+        console.warn('[Berita Acara Client SDK Fallback Error]:', clientFsErr);
       }
     } catch (e) {
       console.error(e);
@@ -291,7 +377,7 @@ export default function AdminDashboardPage() {
         }
       }
 
-      if (statsJson.success && statsJson.data) {
+      if (statsJson.success && statsJson.data && statsJson.data.totalVoters > 0) {
         const newStats = {
           totalVoters: statsJson.data.totalVoters || 0,
           hasVotedCount: statsJson.data.hasVotedCount || 0,
@@ -303,6 +389,46 @@ export default function AdminDashboardPage() {
         setStats(newStats);
         if (typeof window !== 'undefined') {
           localStorage.setItem('dash_stats', JSON.stringify(newStats));
+        }
+      } else {
+        // Fallback: Ambil total pemilih & suara langsung dari Client-Side Firebase Web SDK
+        try {
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+
+          const [userSnap, candSnap, votesSnap] = await Promise.all([
+            getDocs(collection(fdb, 'users')),
+            getDocs(collection(fdb, 'candidates')),
+            getDocs(collection(fdb, 'votes')),
+          ]);
+
+          let totVoters = 0;
+          let votedVoters = 0;
+          userSnap.forEach((d) => {
+            const u = d.data();
+            if (u.role === 'VOTER') {
+              totVoters++;
+              if (u.hasVoted) votedVoters++;
+            }
+          });
+
+          const totalVotesBox = votesSnap.size;
+          const finalHasVoted = Math.max(votedVoters, totalVotesBox);
+          const newStatsObj = {
+            totalVoters: totVoters,
+            hasVotedCount: finalHasVoted,
+            turnoutPercent: totVoters > 0 ? `${Math.round((finalHasVoted / totVoters) * 100)}%` : '0%',
+            totalCandidates: candSnap.size,
+          };
+
+          if (totVoters > 0) {
+            setStats(newStatsObj);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('dash_stats', JSON.stringify(newStatsObj));
+            }
+          }
+        } catch (clientFsErr) {
+          console.warn('[Dash Client SDK Stats Error]:', clientFsErr);
         }
       }
     } catch (err) {
