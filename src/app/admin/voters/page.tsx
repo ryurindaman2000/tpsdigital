@@ -263,11 +263,42 @@ export default function AdminVotersPage() {
         settingsRes.json(),
       ]);
 
-      if (votersJson.success && Array.isArray(votersJson.data)) {
+      if (votersJson.success && Array.isArray(votersJson.data) && votersJson.data.length > 0) {
         setVoters(votersJson.data);
         setFilteredVoters(votersJson.data);
         if (typeof window !== 'undefined') {
           localStorage.setItem('voters_cache', JSON.stringify(votersJson.data));
+        }
+      } else {
+        // Fallback: Ambil data pemilih langsung via Firebase Web SDK Client Browser
+        try {
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+          const snap = await getDocs(collection(fdb, 'users'));
+          const list: any[] = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data.role === 'VOTER') {
+              list.push({
+                id: d.id,
+                nim: data.nim,
+                name: data.name,
+                randomPassword: data.randomPassword || '***',
+                hasVoted: data.hasVoted || false,
+                votedAt: data.votedAt || null,
+                createdAt: data.createdAt || null,
+              });
+            }
+          });
+          if (list.length > 0) {
+            setVoters(list);
+            setFilteredVoters(list);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('voters_cache', JSON.stringify(list));
+            }
+          }
+        } catch (clientFsErr) {
+          console.warn('[Client SDK Fetch Fallback]:', clientFsErr);
         }
       }
 
