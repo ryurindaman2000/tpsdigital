@@ -15,9 +15,38 @@ function generateRandomPassword(): string {
   return result;
 }
 
-// GET /api/voters - Ambil daftar pemilih dari PostgreSQL & bersihkan hash lama jika ada
+// GET /api/voters - Ambil daftar pemilih (Firestore / PostgreSQL)
 export async function GET() {
   try {
+    // 1. Coba ambil dari Firestore terlebih dahulu
+    try {
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+
+      const votersSnap = await getDocs(query(collection(fdb, 'users'), where('role', '==', 'VOTER')));
+      if (!votersSnap.empty) {
+        const fsVoters: any[] = [];
+        votersSnap.forEach((docSnap) => {
+          const v = docSnap.data();
+          fsVoters.push({
+            id: docSnap.id,
+            nim: v.nim,
+            name: v.name,
+            randomPassword: v.randomPassword || '***',
+            hasVoted: v.hasVoted || false,
+            votedAt: v.votedAt || null,
+            createdAt: v.createdAt || null,
+          });
+        });
+        if (fsVoters.length > 0) {
+          return NextResponse.json({ success: true, data: fsVoters });
+        }
+      }
+    } catch (fsErr) {
+      console.error('[Firestore Voters GET Fallback]:', fsErr);
+    }
+
+    // 2. Fallback ke PostgreSQL
     const rawVoters = await db.user.findMany({
       where: { role: 'VOTER' },
       orderBy: { createdAt: 'desc' },

@@ -7,6 +7,37 @@ export const revalidate = 0;
 // GET /api/candidates
 export async function GET() {
   try {
+    // 1. Coba ambil kandidat dari Firestore terlebih dahulu
+    try {
+      const { collection, getDocs, orderBy, query, where } = await import('firebase/firestore');
+      const { db: fdb } = await import('@/lib/firebase');
+
+      const candidatesSnap = await getDocs(query(collection(fdb, 'candidates'), orderBy('candidateNumber', 'asc')));
+      if (!candidatesSnap.empty) {
+        const votesSnap = await getDocs(query(collection(fdb, 'votes'), where('isValid', '==', true)));
+        const votesList: any[] = [];
+        votesSnap.forEach((v) => votesList.push(v.data()));
+
+        const fsCandidates: any[] = [];
+        candidatesSnap.forEach((docSnap) => {
+          const c = docSnap.data();
+          const votesCount = votesList.filter(
+            (v: any) =>
+              Number(v.candidateId) === Number(docSnap.id) ||
+              Number(v.candidateId) === Number(c.candidateNumber)
+          ).length;
+          fsCandidates.push({ id: docSnap.id, ...c, votesCount });
+        });
+
+        if (fsCandidates.length > 0) {
+          return NextResponse.json({ success: true, data: fsCandidates });
+        }
+      }
+    } catch (fsErr) {
+      console.error('[Firestore Candidates GET Fallback]:', fsErr);
+    }
+
+    // 2. Fallback ke PostgreSQL (Prisma)
     const candidates = await db.candidate.findMany({
       orderBy: { candidateNumber: 'asc' },
     });

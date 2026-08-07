@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getFirestoreStats } from '@/lib/firestore-data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
   try {
-    // Jalankan semua query database secara PARALEL untuk kecepatan maksimal
+    // 1. Coba ambil statistik data langsung dari Firestore terlebih dahulu
+    const firestoreStats = await getFirestoreStats();
+    if (firestoreStats && (firestoreStats.totalVoters > 0 || firestoreStats.candidatesCount > 0)) {
+      return NextResponse.json({
+        success: true,
+        data: firestoreStats,
+      });
+    }
+
+    // 2. Fallback ke Prisma PostgreSQL jika Firestore kosong
     const [totalVoters, hasVotedUserCount, candidates, totalValidVotes] = await Promise.all([
       db.user.count({ where: { role: 'VOTER' } }),
       db.user.count({ where: { role: 'VOTER', hasVoted: true } }),
