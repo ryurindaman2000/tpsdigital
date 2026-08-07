@@ -128,6 +128,25 @@ export default function SettingsAdminPage() {
 
     setIsAdminSubmitting(true);
     try {
+      // Direct client-side update to Firestore for instant console & UI sync
+      try {
+        const { doc, setDoc } = await import('firebase/firestore');
+        const { db: fdb } = await import('@/lib/firebase');
+        const targetPass = newAdminPassword ? newAdminPassword.trim() : currentAdminPassword;
+        const updateData = {
+          nim: newAdminUsername.trim(),
+          name: newAdminUsername.trim() === 'admin' ? 'Panitia Pemilihan (Admin)' : newAdminUsername.trim(),
+          randomPassword: targetPass,
+          role: 'ADMIN',
+          hasVoted: false,
+          updatedAt: new Date().toISOString(),
+        };
+        await setDoc(doc(fdb, 'users', 'users'), updateData, { merge: true });
+        await setDoc(doc(fdb, 'users', 'admin'), updateData, { merge: true });
+      } catch (fsClientErr) {
+        console.warn('[Client-side Firestore Update Warning]:', fsClientErr);
+      }
+
       const res = await fetch('/api/admin/account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
