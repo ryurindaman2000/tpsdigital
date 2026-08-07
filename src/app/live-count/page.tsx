@@ -37,8 +37,8 @@ export default function LiveCountPage() {
   const fetchLiveStats = async () => {
     try {
       const [settingsRes, statsRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/vote/stats'),
+        fetch('/api/settings', { cache: 'no-store' }),
+        fetch('/api/vote/stats', { cache: 'no-store' }),
       ]);
 
       const [settingsJson, json] = await Promise.all([
