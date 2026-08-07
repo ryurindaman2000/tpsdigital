@@ -350,7 +350,7 @@ export default function VoterLoginPage() {
               alt="Banner E-Voting TPS"
               loading="lazy"
               decoding="async"
-              className="w-full h-[320px] sm:h-[450px] lg:h-[550px] object-cover rounded-3xl"
+              className="w-full h-[320px] sm:h-[450px] lg:h-[550px] object-contain bg-slate-50 rounded-3xl"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
