@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import jsQR from 'jsqr';
+import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Upload, Eye, EyeOff } from 'lucide-react';
 
 export default function VoterLoginPage() {
   const router = useRouter();
@@ -241,6 +242,69 @@ export default function VoterLoginPage() {
   const handleCloseQrModal = () => {
     stopCamera();
     setIsQrModalOpen(false);
+  };
+
+  // Handler Upload File Gambar QR Code dari HP/Laptop (Otomatis Mendeteksi & Dekode QR Code)
+  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCameraError('');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageUrl = event.target?.result as string;
+      if (!imageUrl) return;
+
+      const img = new Image();
+      img.onload = async () => {
+        // 1. Coba browser Native BarcodeDetector jika didukung
+        if ('BarcodeDetector' in window) {
+          try {
+            const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+            const barcodes = await barcodeDetector.detect(img);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              handleQrDataReceived(barcodes[0].rawValue);
+              return;
+            }
+          } catch (err) {
+            console.warn('Native BarcodeDetector fallback to jsQR:', err);
+          }
+        }
+
+        // 2. Dekode menggunakan Canvas & jsQR Engine
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth',
+          });
+
+          if (code && code.data) {
+            handleQrDataReceived(code.data);
+            return;
+          }
+        }
+
+        // Fallback: Jika tidak terdeteksi QR Code pada gambar
+        setCameraError(
+          'Tidak dapat menemukan QR Code pada gambar yang diunggah. Harap pastikan foto jelas, tidak kabur, dan memuat QR Code Kartu Akses dengan benar.'
+        );
+      };
+
+      img.onerror = () => {
+        setCameraError('Gagal memuat berkas gambar. Format berkas tidak didukung.');
+      };
+
+      img.src = imageUrl;
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -515,6 +579,26 @@ export default function VoterLoginPage() {
                   <p className="text-xs text-slate-300 leading-relaxed max-w-xs">{cameraError}</p>
                 </div>
               )}
+            </div>
+
+            {/* Pilihan Opsional: Unggah Foto QR dari Galeri HP / Laptop */}
+            <div className="space-y-3">
+              <div className="relative text-center">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-white px-2">
+                  Atau Unggah Gambar QR dari HP
+                </span>
+              </div>
+
+              <label className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer">
+                <Upload className="w-4 h-4 text-emerald-600" />
+                <span>Pilih Foto QR dari Galeri</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrFileUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             {/* Close Button */}
