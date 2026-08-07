@@ -228,7 +228,8 @@ export default function AdminVotersPage() {
       setIsUploadingExcel(false);
       setIsExcelModalOpen(false);
       setExcelFile(null);
-      fetchVotersData();
+      setSearchTerm('');
+      await fetchVotersData();
 
       // Tampilkan Modal Laporan Hasil Rekapitulasi Import
       setImportResultModal({
@@ -312,6 +313,22 @@ export default function AdminVotersPage() {
 
     return () => clearInterval(pollInterval);
   }, []);
+
+  // Synchronize filteredVoters whenever voters or searchTerm changes
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredVoters(voters);
+    } else {
+      const term = searchTerm.toLowerCase();
+      setFilteredVoters(
+        voters.filter(
+          (v) =>
+            v.nim.toLowerCase().includes(term) ||
+            v.name.toLowerCase().includes(term)
+        )
+      );
+    }
+  }, [voters, searchTerm]);
 
   // Handler Cetak Kartu Akses TPS (Window Print Ready PDF Grid A4 Presisi Kompak)
   const handlePrintBatchCards = () => {
