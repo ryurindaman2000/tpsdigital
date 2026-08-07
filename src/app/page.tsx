@@ -276,20 +276,37 @@ export default function VoterLoginPage() {
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
           <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-          <div className="flex flex-col items-center space-y-4 animate-in zoom-in-90 fade-in duration-500 relative z-10">
-            {/* Custom Splashscreen Image tanpa Card & tanpa Powered By Pancakalabs */}
-            <div className="w-56 sm:w-72 h-auto flex items-center justify-center">
+          {/* Tampilan Utama Splash Screen: Logo Instansi Tanpa Card di Tengah */}
+          <div className="flex flex-col items-center space-y-6 animate-in zoom-in-90 fade-in duration-500 relative z-10 my-auto">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
               <img
-                src="/images/splashscreen.png"
-                alt="Splash Screen Logo"
-                className="w-full h-auto object-contain drop-shadow-md"
+                src={activeLogoSrc ? `${activeLogoSrc}?t=${Date.now()}` : '/images/default-logo.png'}
+                alt="Logo Instansi"
+                className="w-full h-full object-contain drop-shadow-md animate-pulse"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/images/default-logo.png';
+                }}
               />
             </div>
 
+            {/* Judul TPS-Digital */}
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-none drop-shadow-sm">
+              {appName}
+            </h1>
+
             {/* Premium Animated Loading Bar */}
-            <div className="w-44 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-4 border border-slate-200/80 shadow-inner">
+            <div className="w-44 bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200/80 shadow-inner">
               <div className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 h-full w-full animate-pulse rounded-full" />
             </div>
+          </div>
+
+          {/* Footer Splash Screen: Gambar splashscreen.png Kecil di Bawah */}
+          <div className="relative z-10 pb-4 pt-2">
+            <img
+              src="/images/splashscreen.png"
+              alt="Powered By Pancakalabs"
+              className="h-10 sm:h-12 w-auto object-contain mx-auto opacity-90"
+            />
           </div>
         </div>
       )}
