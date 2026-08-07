@@ -470,10 +470,12 @@ export default function VoterLoginPage() {
             <button
               type="button"
               onClick={handleOpenQrModal}
-              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border-2 border-emerald-500/60 text-emerald-800 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2.5 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20 animate-pulse hover:animate-none"
             >
-              <QrCode className="w-4 h-4 text-emerald-600" />
-              <span>Scan QR Code dari Kartu Akses</span>
+              <div className="p-1 bg-emerald-600 text-white rounded-lg shadow-sm">
+                <QrCode className="w-4 h-4" />
+              </div>
+              <span className="tracking-wide">Scan QR Code dari Kartu Akses</span>
             </button>
           </div>
         </div>
