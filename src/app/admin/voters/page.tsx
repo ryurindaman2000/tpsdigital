@@ -203,36 +203,31 @@ export default function AdminVotersPage() {
         return;
       }
 
+      // Kirim seluruh data Excel dalam 1x HTTP Request Bulk Batch (SUPER FAST)
+      const res = await fetch('/api/voters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulk: true, voters: votersToUpload }),
+      });
+      const data = await res.json();
+
       let successCount = 0;
       let duplicateCount = 0;
       let failedCount = 0;
-      const duplicateList: string[] = [];
+      let duplicateList: string[] = [];
 
-      for (const voter of votersToUpload) {
-        try {
-          const res = await fetch('/api/voters', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nim: voter.nim, name: voter.name }),
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            successCount++;
-          } else if (res.status === 400 && data.message?.includes('sudah terdaftar')) {
-            duplicateCount++;
-            duplicateList.push(`${voter.nim} - ${voter.name}`);
-          } else {
-            failedCount++;
-          }
-        } catch (e) {
-          failedCount++;
-        }
+      if (res.ok && data.success) {
+        successCount = data.successCount || 0;
+        duplicateCount = data.duplicateCount || 0;
+        duplicateList = data.duplicateList || [];
+      } else {
+        failedCount = votersToUpload.length;
       }
 
       setIsUploadingExcel(false);
       setIsExcelModalOpen(false);
       setExcelFile(null);
-      fetchVoters();
+      fetchVotersData();
 
       // Tampilkan Modal Laporan Hasil Rekapitulasi Import
       setImportResultModal({
@@ -253,22 +248,42 @@ export default function AdminVotersPage() {
   // State Kop Surat dari Settings API
   const [kopUrl, setKopUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const localKop = localStorage.getItem('app_kop');
-      if (localKop) setKopUrl(localKop);
-    }
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data) {
-          if (json.data.kopUrl) {
-            setKopUrl(json.data.kopUrl);
-            if (typeof window !== 'undefined') localStorage.setItem('app_kop', json.data.kopUrl);
-          }
+  // Fetch voters & settings secara PARALEL untuk kecepatan maksimal
+  const fetchVotersData = async () => {
+    setIsLoading(true);
+    try {
+      const [votersRes, settingsRes] = await Promise.all([
+        fetch('/api/voters'),
+        fetch('/api/settings'),
+      ]);
+
+      const [votersJson, settingsJson] = await Promise.all([
+        votersRes.json(),
+        settingsRes.json(),
+      ]);
+
+      if (votersJson.success && Array.isArray(votersJson.data)) {
+        setVoters(votersJson.data);
+        setFilteredVoters(votersJson.data);
+      }
+
+      if (settingsJson.success && settingsJson.data) {
+        if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
+        if (settingsJson.data.kopUrl) {
+          setKopUrl(settingsJson.data.kopUrl);
+          if (typeof window !== 'undefined') localStorage.setItem('app_kop', settingsJson.data.kopUrl);
         }
-      })
-      .catch((err) => console.error(err));
+      }
+    } catch (err) {
+      console.error('Gagal mengambil data pemilih:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVotersData();
   }, []);
 
   // Handler Cetak Kartu Akses TPS (Window Print Ready PDF Grid A4 Presisi Kompak)
@@ -415,26 +430,7 @@ export default function AdminVotersPage() {
     }
   }, []);
 
-  // Fetch voters
-  const fetchVoters = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/voters');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setVoters(json.data);
-        setFilteredVoters(json.data);
-      }
-    } catch (err) {
-      console.error('Gagal mengambil data pemilih:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchVoters();
-  }, []);
 
   // Filter Search
   useEffect(() => {
@@ -492,7 +488,7 @@ export default function AdminVotersPage() {
       setNewNim('');
       setNewName('');
       setIsAddModalOpen(false);
-      fetchVoters();
+      fetchVotersData();
     } catch (err) {
       alert('Terjadi kesalahan koneksi.');
     } finally {
@@ -515,7 +511,7 @@ export default function AdminVotersPage() {
       if (res.ok) {
         setSelectedIds([]);
         setIsDeleteConfirmOpen(false);
-        fetchVoters();
+        fetchVotersData();
       } else {
         alert(data.message || 'Gagal menghapus data pemilih.');
       }

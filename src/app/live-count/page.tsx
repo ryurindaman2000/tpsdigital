@@ -33,47 +33,36 @@ export default function LiveCountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  // 1. Baca dari localStorage instan saat halaman dibuka
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const localName = localStorage.getItem('app_name');
-      const localSub = localStorage.getItem('app_subtitle');
-      const localLogo = localStorage.getItem('app_logo');
-
-      if (localName) setAppName(localName);
-      if (localSub) setSubTitle(localSub);
-      if (localLogo) setLogoUrl(localLogo);
-    }
-
-    // 2. Fetch Pengaturan Nama & Logo Aplikasi dari API
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data) {
-          if (json.data.appName) {
-            setAppName(json.data.appName);
-            if (typeof window !== 'undefined') localStorage.setItem('app_name', json.data.appName);
-          }
-          if (json.data.subTitle) {
-            setSubTitle(json.data.subTitle);
-            if (typeof window !== 'undefined') localStorage.setItem('app_subtitle', json.data.subTitle);
-          }
-          if (json.data.logoUrl) {
-            setLogoUrl(json.data.logoUrl);
-            if (typeof window !== 'undefined') localStorage.setItem('app_logo', json.data.logoUrl);
-          } else {
-            setLogoUrl('/images/default-logo.png');
-          }
-        }
-      })
-      .catch((err) => console.error(err));
-  }, []);
-
-  // Fetch Data Live Count
+  // Fetch Pengaturan & Data Live Count sekaligus secara PARALEL
   const fetchLiveStats = async () => {
     try {
-      const res = await fetch('/api/vote/stats');
-      const json = await res.json();
+      const [settingsRes, statsRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/vote/stats'),
+      ]);
+
+      const [settingsJson, json] = await Promise.all([
+        settingsRes.json(),
+        statsRes.json(),
+      ]);
+
+      if (settingsJson.success && settingsJson.data) {
+        if (settingsJson.data.appName) {
+          setAppName(settingsJson.data.appName);
+          if (typeof window !== 'undefined') localStorage.setItem('app_name', settingsJson.data.appName);
+        }
+        if (settingsJson.data.subTitle) {
+          setSubTitle(settingsJson.data.subTitle);
+          if (typeof window !== 'undefined') localStorage.setItem('app_subtitle', settingsJson.data.subTitle);
+        }
+        if (settingsJson.data.logoUrl) {
+          setLogoUrl(settingsJson.data.logoUrl);
+          if (typeof window !== 'undefined') localStorage.setItem('app_logo', settingsJson.data.logoUrl);
+        } else {
+          setLogoUrl('/images/default-logo.png');
+        }
+      }
+
       if (json.success && json.data) {
         setStats({
           totalVoters: json.data.totalVoters || 0,
@@ -97,6 +86,16 @@ export default function LiveCountPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const localName = localStorage.getItem('app_name');
+      const localSub = localStorage.getItem('app_subtitle');
+      const localLogo = localStorage.getItem('app_logo');
+
+      if (localName) setAppName(localName);
+      if (localSub) setSubTitle(localSub);
+      if (localLogo) setLogoUrl(localLogo);
+    }
+
     fetchLiveStats();
     const interval = setInterval(fetchLiveStats, 5000);
     return () => clearInterval(interval);

@@ -74,8 +74,17 @@ export default function SettingsAdminPage() {
     }
 
     try {
-      const res = await fetch('/api/settings');
-      const json = await res.json();
+      // Fetch pengaturan dan data akun admin secara PARALEL (2x lebih cepat)
+      const [res, adminRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/admin/account'),
+      ]);
+
+      const [json, adminJson] = await Promise.all([
+        res.json(),
+        adminRes.json(),
+      ]);
+
       if (json.success && json.data) {
         if (json.data.appName) setAppName(json.data.appName);
         if (json.data.subTitle) setSubTitle(json.data.subTitle);
@@ -87,9 +96,6 @@ export default function SettingsAdminPage() {
         }
       }
 
-      // Fetch Akun Admin saat ini
-      const adminRes = await fetch('/api/admin/account');
-      const adminJson = await adminRes.json();
       if (adminJson.success && adminJson.username) {
         setCurrentAdminUsername(adminJson.username);
         setNewAdminUsername(adminJson.username);

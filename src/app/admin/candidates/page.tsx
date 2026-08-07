@@ -69,14 +69,27 @@ export default function AdminCandidatesPage() {
     }
   }, []);
 
-  // Fetch candidates
-  const fetchCandidates = async () => {
+  // Fetch candidates & settings secara PARALEL untuk respon super kencang
+  const fetchCandidatesData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/candidates');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setCandidates(json.data);
+      const [settingsRes, candidatesRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/candidates'),
+      ]);
+
+      const [settingsJson, candidatesJson] = await Promise.all([
+        settingsRes.json(),
+        candidatesRes.json(),
+      ]);
+
+      if (settingsJson.success && settingsJson.data) {
+        if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
+      }
+
+      if (candidatesJson.success && Array.isArray(candidatesJson.data)) {
+        setCandidates(candidatesJson.data);
       }
     } catch (err) {
       console.error('Gagal mengambil data kandidat:', err);
@@ -86,7 +99,7 @@ export default function AdminCandidatesPage() {
   };
 
   useEffect(() => {
-    fetchCandidates();
+    fetchCandidatesData();
   }, []);
 
   // Open Modal Tambah Paslon Baru
@@ -182,7 +195,7 @@ export default function AdminCandidatesPage() {
       }
 
       setIsModalOpen(false);
-      fetchCandidates();
+      fetchCandidatesData();
     } catch (err) {
       setDuplicateErrorMsg('Terjadi kesalahan sistem database.');
       setIsDuplicateModalOpen(true);
@@ -205,7 +218,7 @@ export default function AdminCandidatesPage() {
       if (res.ok) {
         setIsDeleteModalOpen(false);
         setDeletingCandidate(null);
-        fetchCandidates();
+        fetchCandidatesData();
       } else {
         alert('Gagal menghapus kandidat.');
       }

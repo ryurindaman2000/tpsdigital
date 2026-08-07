@@ -298,40 +298,43 @@ export default function AdminDashboardPage() {
       if (localLogo) setLogoUrl(localLogo);
       if (localKop) setKopUrl(localKop);
     }
-
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data) {
-          if (json.data.appName) setAppName(json.data.appName);
-          if (json.data.subTitle) setSubTitle(json.data.subTitle);
-          if (json.data.kopUrl) {
-            setKopUrl(json.data.kopUrl);
-            if (typeof window !== 'undefined') localStorage.getItem('app_kop');
-          }
-          if (json.data.logoUrl) {
-            setLogoUrl(json.data.logoUrl);
-          } else {
-            setLogoUrl('/images/default-logo.png');
-          }
-        }
-      })
-      .catch((err) => console.error(err));
   }, [router]);
 
-  // Fetch Statistik dari API
-  const fetchDashboardStats = async () => {
+  // Fetch Statistik & Pengaturan Aplikasi sekaligus secara PARALEL
+  const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/vote/stats');
-      const json = await res.json();
-      if (json.success && json.data) {
+      const [settingsRes, statsRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/vote/stats'),
+      ]);
+
+      const [settingsJson, statsJson] = await Promise.all([
+        settingsRes.json(),
+        statsRes.json(),
+      ]);
+
+      if (settingsJson.success && settingsJson.data) {
+        if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.subTitle) setSubTitle(settingsJson.data.subTitle);
+        if (settingsJson.data.kopUrl) {
+          setKopUrl(settingsJson.data.kopUrl);
+          if (typeof window !== 'undefined') localStorage.setItem('app_kop', settingsJson.data.kopUrl);
+        }
+        if (settingsJson.data.logoUrl) {
+          setLogoUrl(settingsJson.data.logoUrl);
+        } else {
+          setLogoUrl('/images/default-logo.png');
+        }
+      }
+
+      if (statsJson.success && statsJson.data) {
         setStats({
-          totalVoters: json.data.totalVoters || 0,
-          hasVotedCount: json.data.hasVotedCount || 0,
-          turnoutPercent: json.data.turnoutPercent || '0%',
-          totalCandidates: Array.isArray(json.data.candidateVotes)
-            ? json.data.candidateVotes.length
+          totalVoters: statsJson.data.totalVoters || 0,
+          hasVotedCount: statsJson.data.hasVotedCount || 0,
+          turnoutPercent: statsJson.data.turnoutPercent || '0%',
+          totalCandidates: Array.isArray(statsJson.data.candidateVotes)
+            ? statsJson.data.candidateVotes.length
             : 0,
         });
       }
@@ -343,7 +346,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardStats();
+    fetchDashboardData();
   }, []);
 
   const handleLogout = async () => {
@@ -380,7 +383,7 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchDashboardStats}
+            onClick={fetchDashboardData}
             className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition shadow-sm"
             title="Segarkan Data Dashboard"
           >

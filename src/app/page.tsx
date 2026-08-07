@@ -24,11 +24,11 @@ export default function VoterLoginPage() {
   useEffect(() => {
     const timer1 = setTimeout(() => {
       setSplashFading(true);
-    }, 1800);
+    }, 800);
 
     const timer2 = setTimeout(() => {
       setShowSplash(false);
-    }, 2400);
+    }, 1200);
 
     return () => {
       clearTimeout(timer1);
@@ -306,6 +306,8 @@ export default function VoterLoginPage() {
             <img
               src={activeBannerSrc}
               alt="Banner E-Voting TPS"
+              loading="lazy"
+              decoding="async"
               className="w-full h-[320px] sm:h-[450px] lg:h-[550px] object-cover rounded-3xl"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';

@@ -64,7 +64,71 @@ export async function GET() {
 // POST /api/voters - Tambah pemilih baru (Password acak 6 karakter rapi)
 export async function POST(request: Request) {
   try {
-    const { nim, name, randomPassword } = await request.json();
+    const body = await request.json();
+
+    // ── SUPPORT BULK INSERT BATCH DARI EXCEL ──
+    if (body.bulk && Array.isArray(body.voters)) {
+      const voters: Array<{ nim: string; name: string }> = body.voters;
+      if (voters.length === 0) {
+        return NextResponse.json({ success: true, count: 0, duplicateList: [] });
+      }
+
+      // Ambil daftar NIM yang sudah terdaftar di database sekaligus
+      const nims = voters.map((v) => String(v.nim).trim());
+      const existingUsers = await db.user.findMany({
+        where: { nim: { in: nims } },
+        select: { nim: true },
+      });
+      const existingNimSet = new Set(existingUsers.map((u) => u.nim));
+
+      const newVotersData: Array<{ nim: string; name: string; randomPassword: string }> = [];
+      const duplicateList: string[] = [];
+
+      for (const voter of voters) {
+        const trimmedNim = String(voter.nim || '').trim();
+        const trimmedName = String(voter.name || '').trim();
+        if (!trimmedNim || !trimmedName) continue;
+
+        if (existingNimSet.has(trimmedNim)) {
+          duplicateList.push(`${trimmedNim} - ${trimmedName}`);
+        } else {
+          existingNimSet.add(trimmedNim); // Cegah duplikasi di dalam file yang sama
+          newVotersData.push({
+            nim: trimmedNim,
+            name: trimmedName,
+            randomPassword: generateRandomPassword(),
+          });
+        }
+      }
+
+      let successCount = 0;
+      if (newVotersData.length > 0) {
+        const result = await db.user.createMany({
+          data: newVotersData,
+          skipDuplicates: true,
+        });
+        successCount = result.count;
+      }
+
+      const adminUser = await getSessionUser();
+      await writeAuditLog(
+        'VOTER_BULK_IMPORT',
+        adminUser?.nim || 'admin',
+        undefined,
+        `Import Excel: ${successCount} berhasil, ${duplicateList.length} duplikat`
+      );
+
+      return NextResponse.json({
+        success: true,
+        total: voters.length,
+        successCount,
+        duplicateCount: duplicateList.length,
+        duplicateList,
+      });
+    }
+
+    // ── SINGLE INSERT (FORM HANDLER) ──
+    const { nim, name, randomPassword } = body;
 
     if (!nim || !name) {
       return NextResponse.json(
