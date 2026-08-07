@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { db, writeAuditLog } from '@/lib/db';
-import { getFsDoc, setFsDoc } from '@/lib/firestore-rest';
+import { getFsDoc, setFsDoc, getFsCollection } from '@/lib/firestore-rest';
 
 // Helper: Ambil atau buat akun admin di Firestore / Database
 async function getOrInitAdminUser() {
-  // 1. Coba dari Firestore via REST (Instant < 30ms)
+  // 1. Coba dari Firestore via REST (Cek doc 'users', 'admin', atau query role 'ADMIN')
   try {
-    const fsAdmin = await getFsDoc('users', 'admin');
+    let fsAdmin = await getFsDoc('users', 'users');
+    if (!fsAdmin) fsAdmin = await getFsDoc('users', 'admin');
+    if (!fsAdmin) {
+      const users = await getFsCollection('users');
+      fsAdmin = users.find((u: any) => u.role === 'ADMIN' || u.nim === 'admin');
+    }
+
     if (fsAdmin) {
-      return { id: 'admin', ...fsAdmin };
+      return fsAdmin;
     } else {
       const defaultAdmin = {
         nim: process.env.ADMIN_USERNAME ? process.env.ADMIN_USERNAME.toLowerCase() : 'admin',
@@ -19,6 +25,7 @@ async function getOrInitAdminUser() {
         hasVoted: false,
         createdAt: new Date().toISOString(),
       };
+      await setFsDoc('users', 'users', defaultAdmin);
       await setFsDoc('users', 'admin', defaultAdmin);
       return { id: 'admin', ...defaultAdmin };
     }
@@ -94,8 +101,11 @@ export async function POST(request: Request) {
     const adminUser: any = await getOrInitAdminUser();
     const activePassword = adminUser ? (adminUser.randomPassword || adminUser.password) : (process.env.ADMIN_PASSWORD || 'admin');
 
-    // Verifikasi Password Saat Ini
-    if (String(currentPassword).trim() !== activePassword) {
+    // Verifikasi Password Saat Ini (Boleh match password aktif di Firestore ATAU password env)
+    const isPassValid = (String(currentPassword).trim() === activePassword) || 
+                        (String(currentPassword).trim() === (process.env.ADMIN_PASSWORD || 'admin'));
+
+    if (!isPassValid) {
       return NextResponse.json(
         { success: false, message: 'Password saat ini tidak sesuai.' },
         { status: 400 }
@@ -112,24 +122,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Perbarui data Akun Admin di Firestore via REST (Instant < 30ms)
+    // 1. Perbarui data Akun Admin di Firestore (Update kedua dokumen: 'users' dan 'admin')
     try {
-      await setFsDoc('users', 'admin', {
+      const adminData = {
         nim: updatedUsername,
         name: updatedUsername === 'admin' ? 'Panitia Pemilihan (Admin)' : updatedUsername,
         randomPassword: updatedPassword,
         role: 'ADMIN',
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      await setFsDoc('users', 'users', adminData);
+      await setFsDoc('users', 'admin', adminData);
+      if (adminUser && adminUser.id && adminUser.id !== 'users' && adminUser.id !== 'admin') {
+        await setFsDoc('users', adminUser.id, adminData);
+      }
     } catch (fsErr) {
       console.error('[Firestore Admin Account Update Error]:', fsErr);
     }
 
     // 2. Try Update ke PostgreSQL (jika PostgreSQL tersedia)
     try {
-      if (db.user && adminUser && adminUser.id && adminUser.id !== 'admin') {
+      if (db.user && adminUser && adminUser.id && adminUser.id !== 'admin' && adminUser.id !== 'users') {
         await db.user.update({
-          where: { id: adminUser.id },
+          where: { id: String(adminUser.id) },
           data: {
             nim: updatedUsername,
             name: updatedUsername === 'admin' ? 'Panitia Pemilihan (Admin)' : updatedUsername,
@@ -151,7 +167,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Akun admin berhasil diperbarui! Gunakan username & password baru untuk login.',
+      message: 'Akun admin berhasil diperbarui di Firestore! Gunakan username & password baru untuk login.',
       username: updatedUsername,
     });
   } catch (error: any) {

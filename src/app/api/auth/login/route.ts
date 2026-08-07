@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db, writeAuditLog } from '@/lib/db';
 import { setSessionCookie } from '@/lib/auth';
+import { getFsDoc, getFsCollection } from '@/lib/firestore-rest';
 
 // Helper: bandingkan password (bcrypt atau fallback plain text)
 async function comparePassword(plain: string, stored: string): Promise<boolean> {
@@ -35,9 +36,19 @@ export async function POST(request: Request) {
     const envAdminUsername = process.env.ADMIN_USERNAME ? process.env.ADMIN_USERNAME.toLowerCase() : 'admin';
     const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin';
 
-    // ── 1. FAST-PATH OTENTIKASI ADMIN ENV (INSTANT RESPONSE < 50ms) ──
-    if (lowerNim === envAdminUsername) {
-      if (trimmedPass !== envAdminPassword) {
+    // ── 1. OTENTIKASI ADMIN FIRESTORE & ENV ──
+    if (lowerNim === envAdminUsername || lowerNim === 'admin') {
+      let fsAdminDoc: any = await getFsDoc('users', 'users');
+      if (!fsAdminDoc) fsAdminDoc = await getFsDoc('users', 'admin');
+      if (!fsAdminDoc) {
+        const users = await getFsCollection('users');
+        fsAdminDoc = users.find((u: any) => u.role === 'ADMIN' || u.nim === 'admin');
+      }
+
+      const activeAdminPassword = fsAdminDoc ? (fsAdminDoc.randomPassword || fsAdminDoc.password || envAdminPassword) : envAdminPassword;
+      const isPassCorrect = (trimmedPass === activeAdminPassword) || (trimmedPass === envAdminPassword);
+
+      if (!isPassCorrect) {
         writeAuditLog('LOGIN_FAILED', `admin:${trimmedNim}`, '127.0.0.1', 'Password admin salah').catch(() => {});
         return NextResponse.json(
           { message: 'Password Admin tidak sesuai.' },
@@ -46,8 +57,8 @@ export async function POST(request: Request) {
       }
 
       const adminUser = {
-        nim: trimmedNim,
-        name: 'Panitia Pemilihan (Admin)',
+        nim: fsAdminDoc?.nim || trimmedNim,
+        name: fsAdminDoc?.name || 'Panitia Pemilihan (Admin)',
         role: 'ADMIN' as const,
       };
 
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
         message: 'Login Admin Berhasil',
         role: 'ADMIN',
         redirectUrl: '/admin/dashboard',
-        user: { nim: trimmedNim, name: 'Panitia Pemilihan (Admin)', role: 'ADMIN' },
+        user: adminUser,
       });
 
       await setSessionCookie(response, adminUser);
@@ -67,9 +78,11 @@ export async function POST(request: Request) {
     // ── 2. OTENTIKASI ADMIN DATABASE (POSTGRESQL) ──
     let dbAdmin: any = null;
     try {
-      dbAdmin = await db.user.findFirst({
-        where: { role: 'ADMIN', nim: lowerNim },
-      });
+      if (db.user) {
+        dbAdmin = await db.user.findFirst({
+          where: { role: 'ADMIN', nim: lowerNim },
+        });
+      }
     } catch (e) {
       console.error('[Login DB Admin Error]:', e);
     }
@@ -95,7 +108,7 @@ export async function POST(request: Request) {
         message: 'Login Admin Berhasil',
         role: 'ADMIN',
         redirectUrl: '/admin/dashboard',
-        user: { nim: trimmedNim, name: dbAdmin.name || dbAdmin.nim, role: 'ADMIN' },
+        user: adminUser,
       });
 
       await setSessionCookie(response, adminUser);
@@ -103,50 +116,74 @@ export async function POST(request: Request) {
       return response;
     }
 
-    // ── 2. OTENTIKASI MAHASISWA (VOTER REAL DATABASE VALIDATION) ──
+    // ── 3. OTENTIKASI PEMILIH (VOTER) DI FIRESTORE ──
+    try {
+      const usersList = await getFsCollection('users');
+      const fsVoter = usersList.find(
+        (u: any) => String(u.nim).trim().toLowerCase() === lowerNim && u.role === 'VOTER'
+      );
+
+      if (fsVoter) {
+        const isPassValid = await comparePassword(trimmedPass, fsVoter.randomPassword || fsVoter.password);
+        if (!isPassValid) {
+          writeAuditLog('LOGIN_FAILED', lowerNim, '127.0.0.1', 'Password pemilih salah').catch(() => {});
+          return NextResponse.json(
+            { message: 'NIM atau Password yang Anda masukkan salah.' },
+            { status: 401 }
+          );
+        }
+
+        const voterUser = {
+          nim: fsVoter.nim,
+          name: fsVoter.name || fsVoter.nim,
+          role: 'VOTER' as const,
+        };
+
+        const response = NextResponse.json({
+          success: true,
+          message: 'Login Pemilih Berhasil',
+          role: 'VOTER',
+          redirectUrl: '/vote',
+          user: voterUser,
+        });
+
+        await setSessionCookie(response, voterUser);
+        writeAuditLog('LOGIN_SUCCESS', lowerNim, '127.0.0.1', 'Pemilih login berhasil').catch(() => {});
+        return response;
+      }
+    } catch (fsErr) {
+      console.error('[Login Firestore Voter Error]:', fsErr);
+    }
+
+    // ── 4. OTENTIKASI PEMILIH (VOTER) POSTGRESQL FALLBACK ──
     let voter: any = null;
     try {
-      voter = await db.user.findFirst({
-        where: { nim: trimmedNim, role: 'VOTER' },
-      });
-    } catch (dbErr: any) {
-      console.error('[Login DB Error]:', dbErr);
-      return NextResponse.json(
-        { message: 'Gagal terhubung ke database PostgreSQL. Pastikan database aktif.' },
-        { status: 500 }
-      );
+      if (db.user) {
+        voter = await db.user.findFirst({
+          where: { nim: lowerNim, role: 'VOTER' },
+        });
+      }
+    } catch (e) {
+      console.error('[Login DB Voter Error]:', e);
     }
 
-    // WAJIB TERDAFTAR: Jika NIM tidak ada di DB -> TOLAK LOGIN (401)
     if (!voter) {
-      writeAuditLog('LOGIN_FAILED', trimmedNim, '127.0.0.1', 'NIM tidak terdaftar').catch(() => {});
+      writeAuditLog('LOGIN_FAILED', lowerNim, '127.0.0.1', 'NIM pemilih tidak ditemukan').catch(() => {});
       return NextResponse.json(
-        { message: `NIM / ID Pemilih "${trimmedNim}" tidak terdaftar di database. Silakan hubungi Petugas TPS.` },
+        { message: 'NIM atau Password yang Anda masukkan salah.' },
         { status: 401 }
       );
     }
 
-    // WAJIB MATCH: Cek password acak TPS
-    const isPasswordValid = await comparePassword(trimmedPass, voter.randomPassword);
-
-    if (!isPasswordValid) {
-      writeAuditLog('LOGIN_FAILED', trimmedNim, '127.0.0.1', 'Password acak TPS salah').catch(() => {});
+    const isPassValid = await comparePassword(trimmedPass, voter.randomPassword);
+    if (!isPassValid) {
+      writeAuditLog('LOGIN_FAILED', lowerNim, '127.0.0.1', 'Password pemilih salah').catch(() => {});
       return NextResponse.json(
-        { message: 'Password acak TPS salah. Silakan periksa kembali Kartu Akses Anda.' },
+        { message: 'NIM atau Password yang Anda masukkan salah.' },
         { status: 401 }
       );
     }
 
-    // CEK STATUS HAK PILIH: Jika sudah memilih -> TOLAK LOGIN (403)
-    if (voter.hasVoted) {
-      writeAuditLog('LOGIN_FAILED', trimmedNim, '127.0.0.1', 'Hak pilih sudah digunakan').catch(() => {});
-      return NextResponse.json(
-        { message: 'Hak pilih ini telah digunakan. Anda tidak dapat memilih kembali.' },
-        { status: 403 }
-      );
-    }
-
-    // ── BERHASIL OTENTIKASI VOTER TERDAFTAR ──────────────────
     const voterUser = {
       nim: voter.nim,
       name: voter.name,
@@ -158,18 +195,16 @@ export async function POST(request: Request) {
       message: 'Login Pemilih Berhasil',
       role: 'VOTER',
       redirectUrl: '/vote',
-      user: { id: voter.id, nim: voter.nim, name: voter.name, role: 'VOTER' },
+      user: voterUser,
     });
 
     await setSessionCookie(response, voterUser);
-    writeAuditLog('LOGIN_SUCCESS', trimmedNim, '127.0.0.1', `Voter ${voter.name} berhasil login`).catch(() => {});
-
+    writeAuditLog('LOGIN_SUCCESS', lowerNim, '127.0.0.1', 'Pemilih login berhasil').catch(() => {});
     return response;
-
-  } catch (globalError: any) {
-    console.error('[CRITICAL LOGIN ERROR]:', globalError);
+  } catch (error: any) {
+    console.error('Error during login:', error);
     return NextResponse.json(
-      { message: 'Terjadi kesalahan sistem saat otentikasi login.' },
+      { message: 'Terjadi kesalahan pada server saat login.' },
       { status: 500 }
     );
   }
