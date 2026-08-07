@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Upload } from 'lucide-react';
+import { KeyRound, User, QrCode, ArrowRight, AlertCircle, TrendingUp, Camera, X, RefreshCw, Upload, Eye, EyeOff } from 'lucide-react';
 
 export default function VoterLoginPage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function VoterLoginPage() {
 
   const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -413,7 +414,7 @@ export default function VoterLoginPage() {
                 </div>
               </div>
 
-              {/* Password Field */}
+              {/* Password Field dengan Ikon Mata Intip Password */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Password TPS
@@ -423,13 +424,25 @@ export default function VoterLoginPage() {
                     <KeyRound className="w-4 h-4" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan Password TPS"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 text-sm transition"
+                    className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 text-sm transition"
                     autoComplete="off"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition focus:outline-none"
+                    title={showPassword ? 'Sembunyikan Password' : 'Lihat Password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
