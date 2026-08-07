@@ -108,7 +108,7 @@ export default function LiveCountPage() {
           const parsed = JSON.parse(localLiveStats);
           if (parsed.stats) setStats(parsed.stats);
           if (parsed.candidateVotes) setCandidateVotes(parsed.candidateVotes);
-        } catch {}
+        } catch { }
       }
     }
 
@@ -147,7 +147,12 @@ export default function LiveCountPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Top Bar Right */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs border border-emerald-200 transition shadow-sm"
+          >
+            <span>Kembali ke Halaman Login</span>
+          </Link>
         </div>
       </header>
 
@@ -324,16 +329,6 @@ export default function LiveCountPage() {
               })}
             </div>
           )}
-        </div>
-
-        {/* Tombol Ringkas Kecil: Kembali ke Halaman Login (di atas Footer) */}
-        <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs border border-emerald-200 transition shadow-sm"
-          >
-            <span>← Kembali ke Halaman Login</span>
-          </Link>
         </div>
       </main>
 

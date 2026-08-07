@@ -208,9 +208,23 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Hapus data DPT dari tabel User
     await db.user.deleteMany({
       where: { id: { in: ids } },
     });
+
+    // Cek sisa voter aktif di database. Jika seluruh DPT atau voter dihapus, bersihkan juga isi tabel votes
+    const remainingVoters = await db.user.count({ where: { role: 'VOTER' } });
+    if (remainingVoters === 0) {
+      await db.vote.deleteMany({});
+    } else {
+      // Jika penghapusan spesifik voter, hapus record vote agar statistik suara masuk selalu sinkron 100%
+      const totalVotedUsers = await db.user.count({ where: { role: 'VOTER', hasVoted: true } });
+      const currentVoteRecords = await db.vote.count();
+      if (totalVotedUsers === 0 || currentVoteRecords > totalVotedUsers) {
+        await db.vote.deleteMany({});
+      }
+    }
 
     // Catat audit log
     const adminUser = await getSessionUser();
@@ -218,7 +232,7 @@ export async function DELETE(request: Request) {
       'VOTER_DELETED',
       adminUser?.nim || 'admin',
       undefined,
-      `Hapus ${ids.length} voter: [${ids.join(', ')}]`
+      `Hapus ${ids.length} voter: [${ids.join(', ')}] & bersihkan tabel votes`
     );
 
     return NextResponse.json({ success: true, message: `${ids.length} data berhasil dihapus.` });

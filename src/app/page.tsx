@@ -269,9 +269,8 @@ export default function VoterLoginPage() {
       {/* REVAMPED PREMIUM WHITE SPLASH SCREEN WITH ANIMATION */}
       {showSplash && (
         <div
-          className={`fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center transition-all duration-700 ease-in-out ${
-            splashFading ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
-          }`}
+          className={`fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center transition-all duration-700 ease-in-out ${splashFading ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
+            }`}
         >
           {/* Subtle Ambient Glow Background Orbs */}
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
@@ -344,7 +343,7 @@ export default function VoterLoginPage() {
 
       {/* Main Container Split View (Kiri Banner Image, Kanan Form Login) */}
       <main className="max-w-7xl mx-auto w-full my-auto z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28 pb-10">
-        
+
         {/* SISI KIRI: BANNER GAMBAR UTAMA (BISA DI-EDIT DI ADMIN / DIPANGGIL DARI public/images/default-banner.jpg) */}
         <div className="lg:col-span-7 w-full flex flex-col justify-center space-y-6">
           <div className="w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative group min-h-[450px] lg:min-h-[550px]">
@@ -358,16 +357,6 @@ export default function VoterLoginPage() {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent flex flex-col justify-end p-6 sm:p-10">
-              <div className="space-y-2">
-                <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight drop-shadow-md">
-                  {appName}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-100 font-medium drop-shadow leading-relaxed max-w-lg">
-                  {subTitle}. Salurkan hak suara Anda secara langsung, umum, bebas, rahasia, jujur, dan adil.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -469,20 +458,19 @@ export default function VoterLoginPage() {
                   ) : (
                     <>
                       <span>Masuk ke Sistem</span>
-                      <ArrowRight className="w-4 h-4 shrink-0" />
                     </>
                   )}
                 </button>
               </div>
 
-              {/* Tombol Memanjang Highlight: Real-Time Quick Count di Bawah Form */}
+              {/* Tombol Memanjang Highlight Jingga/Orange: Real-Time Quick Count di Bawah Form */}
               <div className="pt-2 border-t border-slate-100">
                 <Link
                   href="/live-count"
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/25 ring-2 ring-emerald-600/30 tracking-wide uppercase group animate-pulse hover:animate-none"
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xl shadow-orange-500/25 ring-2 ring-orange-500/30 tracking-wide uppercase group animate-pulse hover:animate-none"
                 >
                   <TrendingUp className="w-4.5 h-4.5 text-white transition group-hover:scale-110 shrink-0" />
-                  <span>Real-Time Quick Count (Monitor Publik) →</span>
+                  <span>Real-Time Quick Count</span>
                 </Link>
               </div>
             </form>
