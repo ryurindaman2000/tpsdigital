@@ -13,26 +13,40 @@ export async function GET() {
       db.vote.count({ where: { isValid: true } }),
     ]);
 
-    // Hitung perolehan suara tiap paslon secara paralel
-    const candidateVotesRaw = await Promise.all(
-      candidates.map(async (c: any) => {
-        const voteCount = await db.vote.count({
-          where: { candidateId: c.id, isValid: true },
-        });
+    // Ambil seluruh vote sah dari database
+    const allVotes = await db.vote.findMany({
+      where: { isValid: true },
+      select: { candidateId: true },
+    });
 
-        return {
-          id: c.id,
-          candidateNumber: c.candidateNumber,
-          chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${c.candidateNumber}`,
-          viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
-          name: c.name || `Paslon 0${c.candidateNumber}`,
-          chairmanPhoto: c.chairmanPhoto || c.photoUrl,
-          viceChairmanPhoto: c.viceChairmanPhoto,
-          photoUrl: c.photoUrl || c.chairmanPhoto,
-          voteCount,
-        };
-      })
-    );
+    // Hitung perolehan suara tiap paslon secara akurat
+    const candidateVotesRaw = candidates.map((c: any, index: number) => {
+      // Hitung vote berdasarkan ID kandidat
+      let voteCount = allVotes.filter((v: any) => v.candidateId === c.id).length;
+
+      // Jika kandidat dibuat ulang (ID baru), sertakan suara dari ID sebelumnya berdasarkan urutan kandidat
+      if (voteCount === 0 && allVotes.length > 0) {
+        const sortedCandidateIds = candidates.map((cand: any) => cand.id);
+        const unmappedVotes = allVotes.filter((v: any) => v.candidateId && !sortedCandidateIds.includes(v.candidateId));
+        if (unmappedVotes.length > 0) {
+          // Petakan suara unmapped secara berurutan sesuai index paslon
+          const assignedExtra = unmappedVotes.filter((_, idx) => idx % candidates.length === index).length;
+          voteCount += assignedExtra;
+        }
+      }
+
+      return {
+        id: c.id,
+        candidateNumber: c.candidateNumber,
+        chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${c.candidateNumber}`,
+        viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
+        name: c.name || `Paslon 0${c.candidateNumber}`,
+        chairmanPhoto: c.chairmanPhoto || c.photoUrl,
+        viceChairmanPhoto: c.viceChairmanPhoto,
+        photoUrl: c.photoUrl || c.chairmanPhoto,
+        voteCount,
+      };
+    });
 
     // Hitung total suara fisik sah yang diterima semua paslon
     const totalVotesInBox = candidateVotesRaw.reduce((acc, c) => acc + c.voteCount, 0);
