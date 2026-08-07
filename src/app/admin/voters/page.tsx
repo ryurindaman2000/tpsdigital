@@ -358,7 +358,7 @@ export default function AdminVotersPage() {
           </div>
         </div>
         <div class="card-footer">
-          <span>Panitia Pemilihan TPS • Kerahasiaan Hak Suara Terjamin</span>
+          <span>Panitia Pemilihan TPS • Kerahasiaan Hak Suara Terjamin • Powered by <strong>pancakalabs.my.id</strong></span>
         </div>
       </div>
     `;
