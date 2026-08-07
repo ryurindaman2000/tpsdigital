@@ -147,13 +147,7 @@ export default function LiveCountPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={fetchLiveStats}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition shadow-sm"
-            title="Segarkan Data"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          {/* Top Bar Right */}
         </div>
       </header>
 
