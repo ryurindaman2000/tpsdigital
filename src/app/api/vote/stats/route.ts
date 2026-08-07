@@ -48,7 +48,7 @@ export async function GET() {
         totalVoters,
         hasVotedCount,
         turnoutPercent,
-        abstainCount,
+        abstainCount: 0,
         candidatesCount: candidates.length,
         candidateVotes,
       },
