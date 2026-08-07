@@ -276,34 +276,16 @@ export default function VoterLoginPage() {
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
           <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-          <div className="flex flex-col items-center space-y-7 animate-in zoom-in-90 fade-in duration-500 relative z-10">
-            {/* Premium Logo Container with Soft Shadow & Ambient Pulsing Glow */}
-            <div className="relative group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-3xl blur-xl animate-pulse pointer-events-none" />
-              <div className="w-32 h-32 sm:w-36 sm:h-36 bg-white rounded-3xl border border-slate-200/80 p-4 shadow-xl flex items-center justify-center relative z-10 transition transform group-hover:scale-105">
-                <img
-                  src={activeLogoSrc ? `${activeLogoSrc}?t=${Date.now()}` : '/images/default-logo.png'}
-                  alt="TPS-Digital Logo"
-                  className="w-full h-full object-contain drop-shadow-md animate-pulse"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/images/default-logo.png';
-                  }}
-                />
-              </div>
+          <div className="flex flex-col items-center space-y-4 animate-in zoom-in-90 fade-in duration-500 relative z-10">
+            {/* Custom Splashscreen Image tanpa Card & tanpa Powered By Pancakalabs */}
+            <div className="w-56 sm:w-72 h-auto flex items-center justify-center">
+              <img
+                src="/images/splashscreen.png"
+                alt="Splash Screen Logo"
+                className="w-full h-auto object-contain drop-shadow-md"
+              />
             </div>
-
-            {/* Judul TPS-Digital & Tagline Powered By PancakaLabs (Enter ke Bawah) */}
-            <div className="space-y-3 flex flex-col items-center">
-              <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-none drop-shadow-sm">
-                TPS-Digital
-              </h1>
-              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 border border-emerald-200/80 rounded-full shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs sm:text-sm font-bold text-emerald-700 tracking-[0.2em] uppercase">
-                  POWERED BY PANCAKALABS
-                </span>
-              </div>
-            </div>
+          </div>
 
             {/* Premium Animated Loading Bar */}
             <div className="w-44 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-4 border border-slate-200/80 shadow-inner">
