@@ -31,6 +31,7 @@ interface Voter {
 
 export default function AdminVotersPage() {
   const [appName, setAppName] = useState('TPS-DIGITAL');
+  const [subTitle, setSubTitle] = useState('Sistem E-Voting Terenkripsi & Transparan');
   const [logoUrl, setLogoUrl] = useState<string | null>('/images/default-logo.png');
 
   const [voters, setVoters] = useState<Voter[]>([]);
@@ -271,6 +272,7 @@ export default function AdminVotersPage() {
 
       if (settingsJson.success && settingsJson.data) {
         if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.subTitle) setSubTitle(settingsJson.data.subTitle);
         if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
         if (settingsJson.data.kopUrl) {
           setKopUrl(settingsJson.data.kopUrl);
@@ -285,10 +287,12 @@ export default function AdminVotersPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const localName = localStorage.getItem('app_name');
+      const localSub = localStorage.getItem('app_subtitle');
       const localLogo = localStorage.getItem('app_logo');
       const localVoters = localStorage.getItem('voters_cache');
 
       if (localName) setAppName(localName);
+      if (localSub) setSubTitle(localSub);
       if (localLogo) setLogoUrl(localLogo);
       if (localVoters) {
         try {
@@ -551,9 +555,12 @@ export default function AdminVotersPage() {
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
-          <h1 className="text-base font-bold text-slate-900">
-            {appName} - Manajemen Pemilih & Cetak Kartu
-          </h1>
+          <div>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">
+              {appName} - Manajemen Pemilih & Cetak Kartu
+            </h1>
+            <p className="text-xs text-slate-500">{subTitle}</p>
+          </div>
         </div>
       </header>
 

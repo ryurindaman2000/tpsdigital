@@ -32,6 +32,7 @@ interface Candidate {
 
 export default function AdminCandidatesPage() {
   const [appName, setAppName] = useState('TPS-DIGITAL');
+  const [subTitle, setSubTitle] = useState('Sistem E-Voting Terenkripsi & Transparan');
   const [logoUrl, setLogoUrl] = useState<string | null>('/images/default-logo.png');
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -52,6 +53,7 @@ export default function AdminCandidatesPage() {
 
       if (settingsJson.success && settingsJson.data) {
         if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.subTitle) setSubTitle(settingsJson.data.subTitle);
         if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
       }
 
@@ -69,10 +71,12 @@ export default function AdminCandidatesPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const localName = localStorage.getItem('app_name');
+      const localSub = localStorage.getItem('app_subtitle');
       const localLogo = localStorage.getItem('app_logo');
       const localCandidates = localStorage.getItem('candidates_cache');
 
       if (localName) setAppName(localName);
+      if (localSub) setSubTitle(localSub);
       if (localLogo) setLogoUrl(localLogo);
       if (localCandidates) {
         try {
@@ -289,9 +293,12 @@ export default function AdminCandidatesPage() {
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
-          <h1 className="text-base font-bold text-slate-900">
-            {appName} - Manajemen Pasangan Calon (Paslon)
-          </h1>
+          <div>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">
+              {appName} - Manajemen Pasangan Calon (Paslon)
+            </h1>
+            <p className="text-xs text-slate-500">{subTitle}</p>
+          </div>
         </div>
       </header>
 
