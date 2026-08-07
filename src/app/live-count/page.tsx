@@ -64,15 +64,23 @@ export default function LiveCountPage() {
       }
 
       if (json.success && json.data) {
-        setStats({
+        const newStats = {
           totalVoters: json.data.totalVoters || 0,
           hasVotedCount: json.data.hasVotedCount || 0,
           turnoutPercent: json.data.turnoutPercent || '0%',
           abstainCount: json.data.abstainCount || 0,
-        });
+        };
+        setStats(newStats);
 
         if (Array.isArray(json.data.candidateVotes)) {
           setCandidateVotes(json.data.candidateVotes);
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('live_stats_cache', JSON.stringify({
+            stats: newStats,
+            candidateVotes: json.data.candidateVotes || [],
+          }));
         }
 
         const now = new Date();
@@ -90,15 +98,29 @@ export default function LiveCountPage() {
       const localName = localStorage.getItem('app_name');
       const localSub = localStorage.getItem('app_subtitle');
       const localLogo = localStorage.getItem('app_logo');
+      const localLiveStats = localStorage.getItem('live_stats_cache');
 
       if (localName) setAppName(localName);
       if (localSub) setSubTitle(localSub);
       if (localLogo) setLogoUrl(localLogo);
+      if (localLiveStats) {
+        try {
+          const parsed = JSON.parse(localLiveStats);
+          if (parsed.stats) setStats(parsed.stats);
+          if (parsed.candidateVotes) setCandidateVotes(parsed.candidateVotes);
+        } catch {}
+      }
     }
 
+    // 1. Fetch awal
     fetchLiveStats();
-    const interval = setInterval(fetchLiveStats, 5000);
-    return () => clearInterval(interval);
+
+    // 2. Real-time Polling Otomatis Setiap 5 Detik sekali
+    const pollInterval = setInterval(() => {
+      fetchLiveStats();
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   const activeLogoSrc = logoUrl || '/images/default-logo.png';

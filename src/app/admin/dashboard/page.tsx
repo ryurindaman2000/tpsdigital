@@ -338,6 +338,13 @@ export default function AdminDashboardPage() {
     }
 
     fetchDashboardData();
+
+    // Polling Suara Real-time Setiap 5 Detik sekali
+    const pollInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }, [router]);
 
   const handleLogout = async () => {
