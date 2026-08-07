@@ -15,7 +15,15 @@ export const firebaseConfig = {
 // Initialize Firebase App Singleton
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+let fsInstance: any;
+try {
+  fsInstance = getFirestore(app, 'default');
+} catch {
+  fsInstance = getFirestore(app);
+}
+
+export const db = fsInstance;
 export const storage = getStorage(app);
 
 export default app;
