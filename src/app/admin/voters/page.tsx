@@ -37,7 +37,7 @@ export default function AdminVotersPage() {
   const [filteredVoters, setFilteredVoters] = useState<Voter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -248,9 +248,8 @@ export default function AdminVotersPage() {
   // State Kop Surat dari Settings API
   const [kopUrl, setKopUrl] = useState<string | null>(null);
 
-  // Fetch voters & settings secara PARALEL untuk kecepatan maksimal
+  // Fetch voters & settings secara PARALEL untuk kecepatan maksimal (Instant UI + Background Sync)
   const fetchVotersData = async () => {
-    setIsLoading(true);
     try {
       const [votersRes, settingsRes] = await Promise.all([
         fetch('/api/voters'),
@@ -265,6 +264,9 @@ export default function AdminVotersPage() {
       if (votersJson.success && Array.isArray(votersJson.data)) {
         setVoters(votersJson.data);
         setFilteredVoters(votersJson.data);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('voters_cache', JSON.stringify(votersJson.data));
+        }
       }
 
       if (settingsJson.success && settingsJson.data) {
@@ -277,12 +279,26 @@ export default function AdminVotersPage() {
       }
     } catch (err) {
       console.error('Gagal mengambil data pemilih:', err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const localName = localStorage.getItem('app_name');
+      const localLogo = localStorage.getItem('app_logo');
+      const localVoters = localStorage.getItem('voters_cache');
+
+      if (localName) setAppName(localName);
+      if (localLogo) setLogoUrl(localLogo);
+      if (localVoters) {
+        try {
+          const parsed = JSON.parse(localVoters);
+          setVoters(parsed);
+          setFilteredVoters(parsed);
+        } catch {}
+      }
+    }
+
     fetchVotersData();
   }, []);
 

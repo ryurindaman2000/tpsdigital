@@ -35,7 +35,54 @@ export default function AdminCandidatesPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>('/images/default-logo.png');
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch candidates & settings secara PARALEL untuk respon super kencang (Instant UI + Background Sync)
+  const fetchCandidatesData = async () => {
+    try {
+      const [settingsRes, candidatesRes] = await Promise.all([
+        fetch('/api/settings'),
+        fetch('/api/candidates'),
+      ]);
+
+      const [settingsJson, candidatesJson] = await Promise.all([
+        settingsRes.json(),
+        candidatesRes.json(),
+      ]);
+
+      if (settingsJson.success && settingsJson.data) {
+        if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
+        if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
+      }
+
+      if (candidatesJson.success && Array.isArray(candidatesJson.data)) {
+        setCandidates(candidatesJson.data);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('candidates_cache', JSON.stringify(candidatesJson.data));
+        }
+      }
+    } catch (err) {
+      console.error('Gagal mengambil data kandidat:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const localName = localStorage.getItem('app_name');
+      const localLogo = localStorage.getItem('app_logo');
+      const localCandidates = localStorage.getItem('candidates_cache');
+
+      if (localName) setAppName(localName);
+      if (localLogo) setLogoUrl(localLogo);
+      if (localCandidates) {
+        try {
+          setCandidates(JSON.parse(localCandidates));
+        } catch {}
+      }
+    }
+
+    fetchCandidatesData();
+  }, []);
 
   // Form Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,49 +105,6 @@ export default function AdminCandidatesPage() {
   // Duplicate Number Error Modal State
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [duplicateErrorMsg, setDuplicateErrorMsg] = useState('');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const localName = localStorage.getItem('app_name');
-      const localLogo = localStorage.getItem('app_logo');
-
-      if (localName) setAppName(localName);
-      if (localLogo) setLogoUrl(localLogo);
-    }
-  }, []);
-
-  // Fetch candidates & settings secara PARALEL untuk respon super kencang
-  const fetchCandidatesData = async () => {
-    setIsLoading(true);
-    try {
-      const [settingsRes, candidatesRes] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/candidates'),
-      ]);
-
-      const [settingsJson, candidatesJson] = await Promise.all([
-        settingsRes.json(),
-        candidatesRes.json(),
-      ]);
-
-      if (settingsJson.success && settingsJson.data) {
-        if (settingsJson.data.appName) setAppName(settingsJson.data.appName);
-        if (settingsJson.data.logoUrl) setLogoUrl(settingsJson.data.logoUrl);
-      }
-
-      if (candidatesJson.success && Array.isArray(candidatesJson.data)) {
-        setCandidates(candidatesJson.data);
-      }
-    } catch (err) {
-      console.error('Gagal mengambil data kandidat:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCandidatesData();
-  }, []);
 
   // Open Modal Tambah Paslon Baru
   const handleOpenAddModal = () => {

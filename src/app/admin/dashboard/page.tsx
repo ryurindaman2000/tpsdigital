@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
     totalCandidates: 0,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // State Cetak Berita Acara Modal dari Dashboard
   const [isBeritaAcaraModalOpen, setIsBeritaAcaraModalOpen] = useState(false);
@@ -261,37 +261,8 @@ export default function AdminDashboardPage() {
     printWindow.document.close();
   };
 
-  // Fetch Pengaturan Nama & Logo & Cek Sesi Admin
-  useEffect(() => {
-    // 1. Verifikasi Sesi Admin
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success || !data.user || data.user.role !== 'ADMIN') {
-          router.replace('/');
-          return;
-        }
-      })
-      .catch(() => {
-        router.replace('/');
-      });
-
-    if (typeof window !== 'undefined') {
-      const localName = localStorage.getItem('app_name');
-      const localSub = localStorage.getItem('app_subtitle');
-      const localLogo = localStorage.getItem('app_logo');
-      const localKop = localStorage.getItem('app_kop');
-
-      if (localName) setAppName(localName);
-      if (localSub) setSubTitle(localSub);
-      if (localLogo) setLogoUrl(localLogo);
-      if (localKop) setKopUrl(localKop);
-    }
-  }, [router]);
-
-  // Fetch Statistik & Pengaturan Aplikasi sekaligus secara PARALEL
+  // Fetch Statistik & Pengaturan Aplikasi sekaligus secara PARALEL (Instant UI + Background Sync)
   const fetchDashboardData = async () => {
-    setIsLoading(true);
     try {
       const [settingsRes, statsRes] = await Promise.all([
         fetch('/api/settings'),
@@ -318,25 +289,56 @@ export default function AdminDashboardPage() {
       }
 
       if (statsJson.success && statsJson.data) {
-        setStats({
+        const newStats = {
           totalVoters: statsJson.data.totalVoters || 0,
           hasVotedCount: statsJson.data.hasVotedCount || 0,
           turnoutPercent: statsJson.data.turnoutPercent || '0%',
           totalCandidates: Array.isArray(statsJson.data.candidateVotes)
             ? statsJson.data.candidateVotes.length
             : 0,
-        });
+        };
+        setStats(newStats);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('dash_stats', JSON.stringify(newStats));
+        }
       }
     } catch (err) {
       console.error('Gagal mengambil data statistik admin:', err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // 1. Verifikasi Sesi Admin
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !data.user || data.user.role !== 'ADMIN') {
+          router.replace('/');
+          return;
+        }
+      })
+      .catch(() => {
+        router.replace('/');
+      });
+
+    if (typeof window !== 'undefined') {
+      const localName = localStorage.getItem('app_name');
+      const localLogo = localStorage.getItem('app_logo');
+      const localKop = localStorage.getItem('app_kop');
+      const localStats = localStorage.getItem('dash_stats');
+
+      if (localName) setAppName(localName);
+      if (localLogo) setLogoUrl(localLogo);
+      if (localKop) setKopUrl(localKop);
+      if (localStats) {
+        try {
+          setStats(JSON.parse(localStats));
+        } catch {}
+      }
+    }
+
     fetchDashboardData();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     try {
