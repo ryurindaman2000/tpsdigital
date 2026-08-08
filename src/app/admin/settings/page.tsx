@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function SettingsAdminPage() {
@@ -374,6 +375,61 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
     }
   };
 
+  // Restore Settings ke Default bawaan sistem
+  const handleRestoreDefaultSettings = async () => {
+    if (!confirm('Apakah Anda yakin ingin mengembalikan pengaturan nama aplikasi, logo, banner, dan kop surat ke default awal?')) {
+      return;
+    }
+
+    setSuccessMsg('');
+    setErrorMsg('');
+    setIsSubmitting(true);
+
+    const defaultAppName = 'TPS-DIGITAL';
+    const defaultSubTitle = 'Sistem E-Voting Terenkripsi & Transparan';
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appName: defaultAppName,
+          subTitle: defaultSubTitle,
+          logoUrl: null,
+          bannerUrl: null,
+          kopUrl: null,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setErrorMsg(json.message || 'Gagal mereset pengaturan.');
+        return;
+      }
+
+      setAppName(defaultAppName);
+      setSubTitle(defaultSubTitle);
+      setLogoUrl(null);
+      setBannerUrl(null);
+      setKopUrl(null);
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('app_name');
+        localStorage.removeItem('app_subtitle');
+        localStorage.removeItem('app_logo');
+        localStorage.removeItem('app_banner');
+        localStorage.removeItem('app_kop');
+      }
+
+      setSuccessMsg('Pengaturan identitas aplikasi berhasil dikembalikan ke default bawaan sistem!');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
 
   return (
@@ -682,7 +738,18 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaultSettings}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-4 py-3 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200 transition disabled:opacity-50"
+                  title="Kembalikan nama aplikasi, logo, banner, dan kop ke default bawaan sistem"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                  <span>Restore Default</span>
+                </button>
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
