@@ -1,5 +1,5 @@
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "tps-digital";
-const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAQQWVYgTH5t88oLvxA-hq4V-8G_RFfwKE";
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "";
 
 const DB_IDS = ["(default)", "default", PROJECT_ID];
 
