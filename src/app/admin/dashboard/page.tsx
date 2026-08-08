@@ -15,10 +15,11 @@ import {
   UserPlus,
   RefreshCw,
   LogOut,
-  ArrowRight,
   ShieldCheck,
   LoaderCircle,
 } from 'lucide-react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -468,12 +469,30 @@ export default function AdminDashboardPage() {
 
     fetchDashboardData();
 
-    // Polling Suara Real-time Setiap 3 Detik sekali (Super Responsif)
-    const pollInterval = setInterval(() => {
-      fetchDashboardData();
-    }, 3000);
+    // Real-time Firebase Firestore Listener (Instant & 0 Polling Overhead)
+    let unsubVotes: (() => void) | null = null;
+    let unsubCands: (() => void) | null = null;
+    let unsubUsers: (() => void) | null = null;
 
-    return () => clearInterval(pollInterval);
+    try {
+      unsubVotes = onSnapshot(collection(db, 'votes'), () => {
+        fetchDashboardData();
+      });
+      unsubCands = onSnapshot(collection(db, 'candidates'), () => {
+        fetchDashboardData();
+      });
+      unsubUsers = onSnapshot(collection(db, 'users'), () => {
+        fetchDashboardData();
+      });
+    } catch (e) {
+      console.warn('[Dashboard Realtime Listener Error]:', e);
+    }
+
+    return () => {
+      if (unsubVotes) unsubVotes();
+      if (unsubCands) unsubCands();
+      if (unsubUsers) unsubUsers();
+    };
   }, [router]);
 
   const handleLogout = async () => {

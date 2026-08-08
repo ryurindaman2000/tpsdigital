@@ -20,6 +20,8 @@ import {
   X,
   Pencil,
 } from 'lucide-react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface Voter {
   id: number;
@@ -346,12 +348,19 @@ export default function AdminVotersPage() {
 
     fetchVotersData();
 
-    // Polling Real-time DPT Status Voting Setiap 3 Detik sekali
-    const pollInterval = setInterval(() => {
-      fetchVotersData();
-    }, 3000);
+    // Real-time Firebase Firestore Listener (Instant DPT updates & 0 Polling Overhead)
+    let unsubUsers: (() => void) | null = null;
+    try {
+      unsubUsers = onSnapshot(collection(db, 'users'), () => {
+        fetchVotersData();
+      });
+    } catch (e) {
+      console.warn('[Voters Realtime Listener Error]:', e);
+    }
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      if (unsubUsers) unsubUsers();
+    };
   }, []);
 
   // Synchronize filteredVoters whenever voters or searchTerm changes

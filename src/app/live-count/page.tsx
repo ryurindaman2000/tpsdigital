@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Vote, TrendingUp, RefreshCw, CheckCircle2, ShieldCheck, ArrowRight, User } from 'lucide-react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface CandidateVote {
   id: number;
@@ -186,12 +188,30 @@ export default function LiveCountPage() {
     // 1. Fetch awal
     fetchLiveStats();
 
-    // 2. Real-time Polling Otomatis Setiap 3 Detik sekali (Super Responsif)
-    const pollInterval = setInterval(() => {
-      fetchLiveStats();
-    }, 3000);
+    // 2. Real-time Firebase Firestore Listener (Instant, 0 Boros Quota Read saat idle)
+    let unsubVotes: (() => void) | null = null;
+    let unsubCands: (() => void) | null = null;
+    let unsubUsers: (() => void) | null = null;
 
-    return () => clearInterval(pollInterval);
+    try {
+      unsubVotes = onSnapshot(collection(db, 'votes'), () => {
+        fetchLiveStats();
+      });
+      unsubCands = onSnapshot(collection(db, 'candidates'), () => {
+        fetchLiveStats();
+      });
+      unsubUsers = onSnapshot(collection(db, 'users'), () => {
+        fetchLiveStats();
+      });
+    } catch (e) {
+      console.warn('[LiveCount Realtime Listener Error]:', e);
+    }
+
+    return () => {
+      if (unsubVotes) unsubVotes();
+      if (unsubCands) unsubCands();
+      if (unsubUsers) unsubUsers();
+    };
   }, []);
 
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
