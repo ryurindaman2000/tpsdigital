@@ -224,3 +224,66 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+// PUT /api/voters - Edit/Update data pemilih (NIM, Nama, Password)
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, nim, name, password } = body;
+
+    if (!id || !nim || !name) {
+      return NextResponse.json(
+        { success: false, message: 'ID, NIM/ID Pemilih, dan Nama Pemilih wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    const trimmedNim = String(nim).trim();
+    const trimmedName = String(name).trim();
+    const trimmedPassword = String(password || '').trim();
+
+    // Cek apakah NIM diubah dan sudah dipakai voter lain
+    const existingUsers = await getFsCollection('users');
+    const isDuplicate = existingUsers.some(
+      (u: any) => String(u.id) !== String(id) && String(u.nim).trim() === trimmedNim
+    );
+
+    if (isDuplicate) {
+      return NextResponse.json(
+        { success: false, message: `NIM/ID Pemilih ${trimmedNim} sudah digunakan oleh pemilih lain.` },
+        { status: 400 }
+      );
+    }
+
+    // Update di Firestore
+    const updateData: Record<string, any> = {
+      nim: trimmedNim,
+      name: trimmedName,
+    };
+    if (trimmedPassword) {
+      updateData.randomPassword = trimmedPassword;
+    }
+
+    await setFsDoc('users', String(id), updateData);
+
+    const adminUser = await getSessionUser();
+    await writeAuditLog(
+      'VOTER_UPDATED',
+      adminUser?.nim || 'admin',
+      undefined,
+      `Update voter [${id}]: ${trimmedNim} - ${trimmedName}`
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Data pemilih berhasil diperbarui.',
+      data: { id, nim: trimmedNim, name: trimmedName, randomPassword: trimmedPassword },
+    });
+  } catch (error: any) {
+    console.error('Error updating voter:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Gagal memperbarui data pemilih.' },
+      { status: 500 }
+    );
+  }
+}

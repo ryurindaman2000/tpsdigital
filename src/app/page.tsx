@@ -192,24 +192,52 @@ export default function VoterLoginPage() {
     }
   };
 
-  // Real-time Frame Scanner Loop via Browser BarcodeDetector / Canvas Analysis
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Real-time Frame Scanner Loop via Browser BarcodeDetector / Canvas jsQR Fallback
   const scanVideoFrame = async () => {
     if (!videoRef.current || !streamRef.current) return;
+    const video = videoRef.current;
 
-    // 1. Coba browser Native BarcodeDetector (Android Chrome / Edge Super Kencang)
-    if ('BarcodeDetector' in window) {
-      try {
-        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-        const barcodes = await barcodeDetector.detect(videoRef.current);
-        if (barcodes && barcodes.length > 0) {
-          const qrText = barcodes[0].rawValue;
-          if (qrText) {
-            handleQrDataReceived(qrText);
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      // 1. Coba browser Native BarcodeDetector (Android Chrome / Edge Terbaru)
+      if ('BarcodeDetector' in window) {
+        try {
+          const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            handleQrDataReceived(barcodes[0].rawValue);
             return;
+          }
+        } catch (err) {
+          // Fallback ke jsQR canvas jika BarcodeDetector gagal/error
+        }
+      }
+
+      // 2. Fallback Canvas & jsQR Engine (Mendukung SEMUA Laptop / WebCam Desktop)
+      try {
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement('canvas');
+        }
+        const canvas = canvasRef.current;
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth',
+            });
+            if (code && code.data) {
+              handleQrDataReceived(code.data);
+              return;
+            }
           }
         }
       } catch (err) {
-        // Fallback silently jika error
+        console.warn('Canvas jsQR scanning error:', err);
       }
     }
 
@@ -229,14 +257,24 @@ export default function VoterLoginPage() {
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
+      let stream: MediaStream;
+      try {
+        // Coba kamera belakang (environment) untuk HP
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+      } catch (e) {
+        // Fallback untuk webcam laptop / kamera bawaan tanpa constraint ketat facingMode
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        // Mulai loop pemindaian real-time 60fps
+        // Mulai loop pemindaian real-time
         animFrameRef.current = requestAnimationFrame(scanVideoFrame);
       }
     } catch (err: any) {

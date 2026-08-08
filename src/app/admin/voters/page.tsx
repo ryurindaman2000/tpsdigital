@@ -18,6 +18,7 @@ import {
   Download,
   FileText,
   X,
+  Pencil,
 } from 'lucide-react';
 
 interface Voter {
@@ -39,6 +40,14 @@ export default function AdminVotersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
+  const [editNim, setEditNim] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -595,6 +604,49 @@ export default function AdminVotersPage() {
     }
   };
 
+  // Edit Data Pemilih (NIM, Nama, Password)
+  const handleOpenEditModal = (voter: Voter) => {
+    setEditingVoter(voter);
+    setEditNim(voter.nim);
+    setEditName(voter.name);
+    setEditPassword(voter.randomPassword || voter.password || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditVoter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVoter || !editNim.trim() || !editName.trim()) return;
+
+    setIsSubmittingEdit(true);
+    try {
+      const res = await fetch('/api/voters', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingVoter.id,
+          nim: editNim.trim(),
+          name: editName.trim(),
+          password: editPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || 'Gagal memperbarui data pemilih.');
+        setIsSubmittingEdit(false);
+        return;
+      }
+
+      setIsEditModalOpen(false);
+      setEditingVoter(null);
+      fetchVotersData();
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi saat memperbarui data pemilih.');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
 
   return (
@@ -781,16 +833,25 @@ export default function AdminVotersPage() {
                         )}
                       </td>
                       <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedIds([voter.id]);
-                            setIsDeleteConfirmOpen(true);
-                          }}
-                          className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition border border-slate-200"
-                          title="Hapus Pemilih"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditModal(voter)}
+                            className="p-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 rounded-lg transition border border-slate-200"
+                            title="Edit Data Pemilih (NIM & Nama)"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedIds([voter.id]);
+                              setIsDeleteConfirmOpen(true);
+                            }}
+                            className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition border border-slate-200"
+                            title="Hapus Pemilih"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -859,6 +920,85 @@ export default function AdminVotersPage() {
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Menyimpan...' : 'Simpan Data Pemilih'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Data Pemilih */}
+      {isEditModalOpen && editingVoter && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 text-slate-900">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Edit Data Pemilih</h3>
+                  <p className="text-[11px] text-slate-500">Ubah ID/NIM, Nama, atau Password TPS</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditVoter} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">ID / NIM Pemilih</label>
+                <input
+                  type="text"
+                  required
+                  value={editNim}
+                  onChange={(e) => setEditNim(e.target.value)}
+                  placeholder="Masukkan ID / NIM Pemilih"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap Pemilih</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Masukkan nama lengkap pemilih"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Password TPS Pemilih</label>
+                <input
+                  type="text"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Password acak kartu akses"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 font-mono font-bold text-emerald-700 tracking-wider"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEdit}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                >
+                  {isSubmittingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
             </form>
