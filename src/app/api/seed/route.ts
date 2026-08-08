@@ -55,15 +55,6 @@ export async function GET() {
       createdAt: new Date().toISOString(),
     });
 
-    // 4. Seed Audit Log
-    await addFsDoc('audit_logs', {
-      action: 'INITIAL_SEED',
-      actor: 'admin',
-      ipAddress: '127.0.0.1',
-      details: 'Initial seeding Firestore via API',
-      createdAt: new Date().toISOString(),
-    });
-
     if (!resUsers1 || !resSettings || !resC1) {
       return NextResponse.json({
         success: false,
@@ -73,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: 'Seeding Firestore Berhasil! Koleksi users, settings, candidates, dan audit_logs telah terisi.',
+      message: 'Seeding Firestore Berhasil! Koleksi users, settings, dan candidates telah terisi.',
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

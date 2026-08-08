@@ -413,7 +413,7 @@ export default function AdminVotersPage() {
               <span class="value font-name">${v.name}</span>
             </div>
             <div class="info-group">
-              <span class="label">PASSWORD TPS</span>
+              <span class="label">PASSWORD</span>
               <span class="value pass-code font-mono">${activePass}</span>
             </div>
           </div>
@@ -687,7 +687,7 @@ export default function AdminVotersPage() {
         {/* Top Control Card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Tambah Data Pemilih / Voter</h3>
+            <h3 className="text-sm font-bold text-slate-900">Tambah Data Pemilih</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Gunakan fitur Bulk Upload Excel atau Tambah Manual 1 per 1 di bawah ini.
             </p>
@@ -721,7 +721,7 @@ export default function AdminVotersPage() {
           <div className="flex justify-between items-center gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-bold text-slate-900">
-                Daftar Pemilih Terdaftar ({filteredVoters.length})
+                Daftar Pemilih ({filteredVoters.length})
               </h3>
 
               {selectedIds.length > 0 && (
