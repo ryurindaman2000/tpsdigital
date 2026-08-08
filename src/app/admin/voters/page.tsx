@@ -287,7 +287,7 @@ export default function AdminVotersPage() {
           const list: any[] = [];
           snap.forEach((d) => {
             const data = d.data();
-            if (data.role === 'VOTER') {
+            if (data.role === 'VOTER' || (!data.role && data.nim !== 'admin')) {
               list.push({
                 id: d.id,
                 nim: data.nim,

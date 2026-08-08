@@ -22,7 +22,9 @@ export async function GET() {
     // 1. Ambil dari Firestore via REST (Instant < 30ms)
     try {
       const users = await getFsCollection('users');
-      const voters = users.filter((u: any) => u.role === 'VOTER');
+      const voters = users.filter(
+        (u: any) => (u.role === 'VOTER' || (!u.role && u.nim !== 'admin')) && u.nim
+      );
 
       const data = voters.map((v: any) => ({
         id: v.id,
@@ -259,6 +261,7 @@ export async function PUT(request: Request) {
     const updateData: Record<string, any> = {
       nim: trimmedNim,
       name: trimmedName,
+      role: 'VOTER',
     };
     if (trimmedPassword) {
       updateData.randomPassword = trimmedPassword;
