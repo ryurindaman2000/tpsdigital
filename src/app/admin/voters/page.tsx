@@ -1038,19 +1038,6 @@ export default function AdminVotersPage() {
                       </td>
                       <td className="p-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {!voter.hasVoted && (
-                            <button
-                              onClick={() => handleLockVoters(!voter.isLocked, 'ids', [voter.nim || (voter.id as any)])}
-                              className={`p-1.5 rounded-lg transition border ${
-                                voter.isLocked
-                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
-                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200'
-                              }`}
-                              title={voter.isLocked ? 'Buka Kunci Akun' : 'Kunci / Nonaktifkan Login Akun'}
-                            >
-                              {voter.isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                            </button>
-                          )}
                           <button
                             onClick={() => handleOpenEditModal(voter)}
                             className="p-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 rounded-lg transition border border-slate-200"
