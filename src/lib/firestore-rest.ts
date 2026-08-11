@@ -43,8 +43,9 @@ export function encodeFirestoreFields(data: Record<string, any>) {
 
 // Helper multi-db fetch
 async function fetchWithDbFallback(docPath: string, options?: RequestInit) {
+  const separator = docPath.includes('?') ? '&' : '?';
   for (const dbId of DB_IDS) {
-    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${dbId}/documents/${docPath}?key=${API_KEY}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${dbId}/documents/${docPath}${separator}key=${API_KEY}`;
     try {
       const res = await fetch(url, options);
       if (res.ok) return res;
@@ -53,7 +54,7 @@ async function fetchWithDbFallback(docPath: string, options?: RequestInit) {
       // try next dbId
     }
   }
-  const fallbackUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}?key=${API_KEY}`;
+  const fallbackUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}${separator}key=${API_KEY}`;
   return fetch(fallbackUrl, options);
 }
 
