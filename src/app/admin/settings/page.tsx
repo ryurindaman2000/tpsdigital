@@ -185,6 +185,8 @@ export default function SettingsAdminPage() {
     } finally {
       setIsAdminSubmitting(false);
     }
+  };
+
   // Handler Seed Initial Database ke Firebase (Admin & Default Settings)
   const handleSeedDatabase = async () => {
     setSeedSuccessMsg('');
