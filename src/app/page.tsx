@@ -583,16 +583,6 @@ export default function VoterLoginPage() {
                 </button>
               </div>
 
-              {/* Tombol Memanjang Highlight Jingga/Orange: Real-Time Quick Count di Bawah Form */}
-              <div className="pt-2 border-t border-slate-100">
-                <Link
-                  href="/live-count"
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xl shadow-orange-500/25 ring-2 ring-orange-500/30 tracking-wide uppercase group animate-pulse hover:animate-none"
-                >
-                  <TrendingUp className="w-4.5 h-4.5 text-white transition group-hover:scale-110 shrink-0" />
-                  <span>Real-Time Quick Count</span>
-                </Link>
-              </div>
             </form>
           </div>
         </div>

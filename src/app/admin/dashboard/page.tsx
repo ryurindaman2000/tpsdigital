@@ -667,7 +667,28 @@ export default function AdminDashboardPage() {
               </span>
             </button>
 
-            {/* Card 4: Pengaturan Halaman */}
+            {/* Card 4: Monitor Real-Time Quick Count */}
+            <Link
+              href="/live-count"
+              className="bg-gradient-to-br from-orange-500 to-amber-600 text-white p-6 rounded-2xl flex flex-col justify-between transition group shadow-lg shadow-orange-500/20 hover:scale-[1.02]"
+            >
+              <div className="space-y-3">
+                <div className="p-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl text-white w-fit">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-black text-white transition">
+                  Monitor Real-Time Quick Count
+                </h3>
+                <p className="text-xs text-orange-100 leading-relaxed font-medium">
+                  Pantau pergerakan grafik perolehan suara pasangan calon secara langsung (live & transparan).
+                </p>
+              </div>
+              <span className="text-xs font-bold text-white mt-6 inline-flex items-center gap-1 group-hover:translate-x-1 transition">
+                Buka Layar Quick Count →
+              </span>
+            </Link>
+
+            {/* Card 5: Pengaturan Halaman */}
             <Link
               href="/admin/settings"
               className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition group shadow-md"

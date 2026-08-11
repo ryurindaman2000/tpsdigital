@@ -176,8 +176,8 @@ function VotingBoothContent() {
           localStorage.removeItem('voter_name');
           localStorage.removeItem('voter_nim');
         }
-        router.push('/live-count');
-      }, 3000);
+        router.push('/');
+      }, 2500);
     } catch (err) {
       alert('Terjadi kesalahan saat menyimpan suara.');
     } finally {
@@ -575,7 +575,7 @@ function VotingBoothContent() {
             <div>
               <h3 className="text-xl font-bold text-slate-900">Suara Anda Berhasil Disimpan!</h3>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Terima kasih <strong>{voterName}</strong> telah berpartisipasi. Anda akan otomatis dialihkan ke Monitor Quick Count...
+                Terima kasih <strong>{voterName}</strong> telah berpartisipasi dalam pemungutan suara. Anda akan otomatis dialihkan kembali ke halaman Login...
               </p>
             </div>
 
