@@ -322,8 +322,13 @@ export async function PATCH(request: Request) {
       // Hanya pemilih yang BELUM MEMILIH
       targetVoters = voterUsers.filter((u: any) => !u.hasVoted);
     } else if (target === 'ids' && Array.isArray(ids) && ids.length > 0) {
-      // Pemilih terpilih berdasarkan ID
-      targetVoters = voterUsers.filter((u: any) => ids.includes(u.id) || ids.includes(Number(u.id)));
+      // Pemilih terpilih berdasarkan ID atau NIM
+      const stringIds = ids.map((i: any) => String(i));
+      targetVoters = voterUsers.filter(
+        (u: any) =>
+          stringIds.includes(String(u.id)) ||
+          stringIds.includes(String(u.nim))
+      );
     } else if (target === 'all') {
       // Semua pemilih
       targetVoters = voterUsers;
@@ -344,11 +349,12 @@ export async function PATCH(request: Request) {
     for (let i = 0; i < targetVoters.length; i += chunkSize) {
       const chunk = targetVoters.slice(i, i + chunkSize);
       await Promise.all(
-        chunk.map((v: any) =>
-          setFsDoc('users', String(v.id || v.nim), {
+        chunk.map((v: any) => {
+          const docId = String(v.nim || v.id);
+          return setFsDoc('users', docId, {
             isLocked: isLocked,
-          })
-        )
+          });
+        })
       );
       updatedCount += chunk.length;
     }
