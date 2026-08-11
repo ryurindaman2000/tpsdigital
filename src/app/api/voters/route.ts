@@ -320,9 +320,9 @@ export async function PATCH(request: Request) {
     let targetVoters: any[] = [];
     if (target === 'unvoted') {
       // Jika mengunci (isLocked=true), sasar semua yang belum memilih (!hasVoted)
-      // Jika membuka kunci (isLocked=false), hanya sasar yang sedang terkunci (isLocked=true)
+      // Jika membuka kunci (isLocked=false), sasar semua yang saat ini statusnya terkunci (u.isLocked true / 'true')
       targetVoters = voterUsers.filter((u: any) =>
-        isLocked ? !u.hasVoted : u.isLocked === true
+        isLocked ? !u.hasVoted : (u.isLocked === true || String(u.isLocked) === 'true')
       );
     } else if (target === 'ids' && Array.isArray(ids) && ids.length > 0) {
       // Pemilih terpilih berdasarkan ID atau NIM
