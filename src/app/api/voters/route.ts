@@ -348,15 +348,24 @@ export async function PATCH(request: Request) {
 
     for (let i = 0; i < targetVoters.length; i += chunkSize) {
       const chunk = targetVoters.slice(i, i + chunkSize);
-      await Promise.all(
-        chunk.map((v: any) => {
+      const results = await Promise.all(
+        chunk.map(async (v: any) => {
           const docId = String(v.nim || v.id);
-          return setFsDoc('users', docId, {
+          const ok = await setFsDoc('users', docId, {
             isLocked: isLocked,
           });
+          return ok;
         })
       );
-      updatedCount += chunk.length;
+      updatedCount += results.filter(Boolean).length;
+    }
+
+    if (updatedCount === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal memperbarui status kunci: semua operasi write ke Firestore gagal. Cek koneksi ke database.',
+        updatedCount: 0,
+      });
     }
 
     const adminUser = await getSessionUser();
