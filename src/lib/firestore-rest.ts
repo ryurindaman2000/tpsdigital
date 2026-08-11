@@ -1,7 +1,8 @@
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "";
 
-const DB_IDS = ["(default)", "default", PROJECT_ID];
+// Database ID 'default' (tanpa kurung) adalah nama database aktif di Firestore project ini
+const DB_IDS = ["default", "(default)", PROJECT_ID];
 
 // Helper: Decode Firestore REST response fields to plain JS object
 export function decodeFirestoreDoc(doc: any) {
