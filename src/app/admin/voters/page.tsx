@@ -535,7 +535,9 @@ export default function AdminVotersPage() {
   const handleLockVoters = (isLocked: boolean, target: 'unvoted' | 'all' | 'ids', customIds?: number[]) => {
     const targetIds = customIds || selectedIds;
     const targetCount = target === 'unvoted' 
-      ? voters.filter(v => !v.hasVoted).length 
+      ? isLocked 
+        ? voters.filter(v => !v.hasVoted).length 
+        : voters.filter(v => v.isLocked).length
       : target === 'all' 
       ? voters.length 
       : targetIds.length;
