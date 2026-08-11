@@ -314,30 +314,43 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const existingUsers = await getFsCollection('users');
-    const voterUsers = existingUsers.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
+    let targetDocIds: string[] = [];
 
-    let targetVoters: any[] = [];
-    if (target === 'unvoted') {
-      // Jika mengunci (isLocked=true), sasar semua yang belum memilih (!hasVoted)
-      // Jika membuka kunci (isLocked=false), sasar semua yang saat ini statusnya terkunci (u.isLocked true / 'true')
-      targetVoters = voterUsers.filter((u: any) =>
-        isLocked ? !u.hasVoted : (u.isLocked === true || String(u.isLocked) === 'true')
-      );
-    } else if (target === 'ids' && Array.isArray(ids) && ids.length > 0) {
-      // Pemilih terpilih berdasarkan ID atau NIM
-      const stringIds = ids.map((i: any) => String(i));
-      targetVoters = voterUsers.filter(
-        (u: any) =>
-          stringIds.includes(String(u.id)) ||
-          stringIds.includes(String(u.nim))
-      );
-    } else if (target === 'all') {
-      // Semua pemilih
-      targetVoters = voterUsers;
+    if (target === 'ids' && Array.isArray(ids) && ids.length > 0) {
+      // Jika IDs spesifik dikirimkan, gunakan langsung tanpa butuh fetch seluruh koleksi
+      targetDocIds = ids.map((i: any) => String(i));
+    } else {
+      // Jika target 'unvoted' atau 'all', baca data dari Firestore
+      let voterUsers: any[] = [];
+      try {
+        const existingUsers = await getFsCollection('users');
+        if (existingUsers.length > 0) {
+          voterUsers = existingUsers.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
+        } else {
+          // Fallback: Gunakan Firebase Web SDK (getDocs) jika REST API getCollection terkena 403 Forbidden
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db: fdb } = await import('@/lib/firebase');
+          const snap = await getDocs(collection(fdb, 'users'));
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data.role === 'VOTER' || (!data.role && data.nim !== 'admin')) {
+              voterUsers.push({ id: d.id, nim: data.nim || d.id, ...data });
+            }
+          });
+        }
+      } catch (e) {
+        console.error('[Voters PATCH Read Fallback Error]:', e);
+      }
+
+      if (target === 'unvoted') {
+        voterUsers = voterUsers.filter((u: any) =>
+          isLocked ? !u.hasVoted : (u.isLocked === true || String(u.isLocked) === 'true')
+        );
+      }
+      targetDocIds = voterUsers.map((v: any) => String(v.nim || v.id));
     }
 
-    if (targetVoters.length === 0) {
+    if (targetDocIds.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'Tidak ada data pemilih yang sesuai untuk diperbarui status kuncinya.',
@@ -345,15 +358,17 @@ export async function PATCH(request: Request) {
       });
     }
 
+    // Hindari duplikasi ID
+    targetDocIds = Array.from(new Set(targetDocIds));
+
     // Eksekusi Update Batch Paralel (Maksimal 100 per Chunks)
     const chunkSize = 100;
     let updatedCount = 0;
 
-    for (let i = 0; i < targetVoters.length; i += chunkSize) {
-      const chunk = targetVoters.slice(i, i + chunkSize);
+    for (let i = 0; i < targetDocIds.length; i += chunkSize) {
+      const chunk = targetDocIds.slice(i, i + chunkSize);
       const results = await Promise.all(
-        chunk.map(async (v: any) => {
-          const docId = String(v.nim || v.id);
+        chunk.map(async (docId: string) => {
           const ok = await setFsDoc('users', docId, {
             isLocked: Boolean(isLocked),
           });
