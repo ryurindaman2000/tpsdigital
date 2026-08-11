@@ -1297,6 +1297,9 @@ export default function AdminVotersPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
             {/* Info Petunjuk Klik Refresh Data */}
             <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5 text-left">
               <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
