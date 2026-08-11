@@ -20,7 +20,6 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
-  Database,
 } from 'lucide-react';
 
 export default function SettingsAdminPage() {
@@ -34,11 +33,6 @@ export default function SettingsAdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // State Seed Database
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedSuccessMsg, setSeedSuccessMsg] = useState('');
-  const [seedErrorMsg, setSeedErrorMsg] = useState('');
 
   // State Pengaturan Akun Admin
   const [currentAdminUsername, setCurrentAdminUsername] = useState('admin');
@@ -184,54 +178,6 @@ export default function SettingsAdminPage() {
       setAdminErrorMsg('Terjadi kesalahan jaringan/server.');
     } finally {
       setIsAdminSubmitting(false);
-    }
-  };
-
-  // Handler Seed Initial Database ke Firebase (Admin & Default Settings)
-  const handleSeedDatabase = async () => {
-    setSeedSuccessMsg('');
-    setSeedErrorMsg('');
-
-    if (!confirm('Apakah Anda yakin ingin melakukan Inisialisasi / Seed Database awal (Akun Admin & Pengaturan Default) ke Firebase?')) {
-      return;
-    }
-
-    setIsSeeding(true);
-    try {
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db: fdb } = await import('@/lib/firebase');
-
-      // 1. Seed Akun Admin
-      const adminData = {
-        nim: 'admin',
-        name: 'Panitia Pemilihan (Admin)',
-        role: 'ADMIN',
-        randomPassword: 'admin',
-        password: 'admin',
-        hasVoted: false,
-        createdAt: new Date().toISOString(),
-      };
-      await setDoc(doc(fdb, 'users', 'users'), adminData, { merge: true });
-      await setDoc(doc(fdb, 'users', 'admin'), adminData, { merge: true });
-
-      // 2. Seed Settings Default
-      const settingsData = {
-        id: 'default',
-        appName: 'TPS-DIGITAL',
-        subTitle: 'Sistem E-Voting Terenkripsi & Transparan',
-        logoUrl: '/images/default-logo.png',
-        bannerUrl: '/images/default-banner.jpg',
-        updatedAt: new Date().toISOString(),
-      };
-      await setDoc(doc(fdb, 'settings', 'default'), settingsData, { merge: true });
-
-      setSeedSuccessMsg('Berhasil melakukan Inisialisasi / Seed Database ke Firebase! Akun admin/admin & Pengaturan default telah tersimpan.');
-      fetchSettings();
-    } catch (err: any) {
-      console.error('[Seed Error]:', err);
-      setSeedErrorMsg(err.message || 'Gagal melakukan seed ke Firebase. Pastikan Firestore sudah di-enable.');
-    } finally {
-      setIsSeeding(false);
     }
   };
 
@@ -952,58 +898,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Kartu Khusus: Seed / Inisialisasi Database Firebase */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl text-white space-y-5">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                  <Database className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    Inisialisasi / Seed Database Firebase
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Gunakan fitur ini jika Anda baru saja mengganti Project/Database Firebase untuk menanam data awal (Akun Admin <code className="text-emerald-400">admin/admin</code> &amp; Pengaturan Default).
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSeedDatabase}
-                disabled={isSeeding}
-                className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition shrink-0 disabled:opacity-50"
-              >
-                {isSeeding ? (
-                  <>
-                    <LoaderCircle className="w-4 h-4 animate-spin text-white" />
-                    <span>Memproses Seed...</span>
-                  </>
-                ) : (
-                  <>
-                    <Database className="w-4 h-4" />
-                    <span>Seed Database Ke Firebase</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {seedSuccessMsg && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 text-emerald-400 text-xs font-semibold">
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
-                <span>{seedSuccessMsg}</span>
-              </div>
-            )}
-
-            {seedErrorMsg && (
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400 text-xs font-semibold">
-                <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />
-                <span>{seedErrorMsg}</span>
-              </div>
-            )}
           </div>
         </>
       )}
