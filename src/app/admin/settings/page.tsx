@@ -1003,9 +1003,9 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
               </div>
             )}
           </div>
-          </>
-        )}
-      </main>
+        </>
+      )}
+    </main>
 
       {/* MODAL POPUP PREMIUM: Penolakan Ukuran Gambar Tidak Sesuai */}
       {imageErrorModal?.isOpen && (
