@@ -188,29 +188,35 @@ export default function LiveCountPage() {
     // 1. Fetch awal
     fetchLiveStats();
 
-    // 2. Real-time Firebase Firestore Listener (Instant, 0 Boros Quota Read saat idle)
+    // 2. Real-time Firebase Firestore Listener Hemat Quota
+    // Menggunakan debounce agar saat terjadi pencoblosan bersamaan, fetch tidak dipanggil berkali-kali secara eksplosif
+    let debounceTimer: NodeJS.Timeout | null = null;
+    const triggerDebouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchLiveStats();
+      }, 800); // Wait 800ms sebelum fetch ulang
+    };
+
     let unsubVotes: (() => void) | null = null;
     let unsubCands: (() => void) | null = null;
-    let unsubUsers: (() => void) | null = null;
 
     try {
+      // Cukup listen ke koleksi 'votes' saja (koleksi utama pencoblosan)
       unsubVotes = onSnapshot(collection(db, 'votes'), () => {
-        fetchLiveStats();
+        triggerDebouncedFetch();
       });
       unsubCands = onSnapshot(collection(db, 'candidates'), () => {
-        fetchLiveStats();
-      });
-      unsubUsers = onSnapshot(collection(db, 'users'), () => {
-        fetchLiveStats();
+        triggerDebouncedFetch();
       });
     } catch (e) {
       console.warn('[LiveCount Realtime Listener Error]:', e);
     }
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (unsubVotes) unsubVotes();
       if (unsubCands) unsubCands();
-      if (unsubUsers) unsubUsers();
     };
   }, []);
 

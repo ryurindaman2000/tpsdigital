@@ -469,26 +469,35 @@ export default function AdminDashboardPage() {
 
     fetchDashboardData();
 
-    // Real-time Firebase Firestore Listener (Instant & 0 Polling Overhead)
+    // Real-time Firebase Firestore Listener Hemat Quota
+    let debounceTimer: NodeJS.Timeout | null = null;
+    const triggerDebouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchDashboardData();
+      }, 1000); // Wait 1 sec sebelum re-fetch data dashboard
+    };
+
     let unsubVotes: (() => void) | null = null;
     let unsubCands: (() => void) | null = null;
     let unsubUsers: (() => void) | null = null;
 
     try {
       unsubVotes = onSnapshot(collection(db, 'votes'), () => {
-        fetchDashboardData();
+        triggerDebouncedFetch();
       });
       unsubCands = onSnapshot(collection(db, 'candidates'), () => {
-        fetchDashboardData();
+        triggerDebouncedFetch();
       });
       unsubUsers = onSnapshot(collection(db, 'users'), () => {
-        fetchDashboardData();
+        triggerDebouncedFetch();
       });
     } catch (e) {
       console.warn('[Dashboard Realtime Listener Error]:', e);
     }
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       if (unsubVotes) unsubVotes();
       if (unsubCands) unsubCands();
       if (unsubUsers) unsubUsers();
