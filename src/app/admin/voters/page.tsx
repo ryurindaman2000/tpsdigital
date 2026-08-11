@@ -912,24 +912,6 @@ export default function AdminVotersPage() {
               {selectedIds.length > 0 && (
                 <>
                   <button
-                    onClick={() => handleLockVoters(true, 'ids')}
-                    disabled={isLocking}
-                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs border border-amber-200 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                    title="Kunci akun pemilih terpilih"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Kunci ({selectedIds.length})</span>
-                  </button>
-                  <button
-                    onClick={() => handleLockVoters(false, 'ids')}
-                    disabled={isLocking}
-                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-xs border border-emerald-200 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                    title="Buka kunci akun pemilih terpilih"
-                  >
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>Buka ({selectedIds.length})</span>
-                  </button>
-                  <button
                     onClick={() => setIsPrintModalOpen(true)}
                     className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-xs border border-emerald-200 transition flex items-center gap-1.5 shadow-sm"
                   >
