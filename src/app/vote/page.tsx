@@ -61,28 +61,33 @@ function VotingBoothContent() {
       if (appLocalLogo) setLogoUrl(appLocalLogo);
     }
 
-    if (nameParam) setVoterName(decodeURIComponent(nameParam));
-    else if (localName) setVoterName(localName);
-
-    // Cek Sesi Server (jika ada cookie). Jika cookie tidak ada tapi client memegang localNim/nameParam, izinkan vote!
+    // Cek Sesi Server (utamakan data resmi dari cookie session server)
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.user) {
           if (data.user.role === 'VOTER') {
-            if (data.user.name) setVoterName(data.user.name);
+            if (data.user.name) {
+              setVoterName(data.user.name);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('voter_name', data.user.name);
+                localStorage.setItem('voter_nim', data.user.nim || '');
+              }
+            }
             return;
           } else if (data.user.role === 'ADMIN') {
             router.replace('/admin/dashboard');
             return;
           }
         }
-        if (localNim || nameParam) return;
-        router.replace('/');
+        if (nameParam) setVoterName(decodeURIComponent(nameParam));
+        else if (localName) setVoterName(localName);
+        else if (!localNim) router.replace('/');
       })
       .catch(() => {
-        if (localNim || nameParam) return;
-        router.replace('/');
+        if (nameParam) setVoterName(decodeURIComponent(nameParam));
+        else if (localName) setVoterName(localName);
+        else if (!localNim) router.replace('/');
       });
   }, [router, searchParams]);
 
@@ -187,6 +192,18 @@ function VotingBoothContent() {
 
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
 
+  // Handler Keluar dari Bilik Suara
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('voter_name');
+      localStorage.removeItem('voter_nim');
+    }
+    router.replace('/');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
       {/* FULL-WIDTH STICKY TOP BAR HEADER (Clean White Theme) */}
@@ -216,7 +233,7 @@ function VotingBoothContent() {
             <span className="text-xs font-bold text-emerald-600">{voterName}</span>
           </div>
           <button
-            onClick={() => router.push('/')}
+            onClick={handleLogout}
             className="p-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl border border-slate-200 transition"
             title="Keluar dari Bilik Suara"
           >
