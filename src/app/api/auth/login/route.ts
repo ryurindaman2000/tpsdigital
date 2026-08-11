@@ -127,6 +127,14 @@ export async function POST(request: Request) {
       }
 
       if (fsVoter && fsVoter.role === 'VOTER') {
+        if (fsVoter.isLocked) {
+          writeAuditLog('LOGIN_BLOCKED', lowerNim, '127.0.0.1', 'Akun pemilih terkunci (TPS Tutup)').catch(() => {});
+          return NextResponse.json(
+            { message: 'Waktu pemungutan suara TPS telah ditutup. Akun Anda saat ini dinonaktifkan oleh Panitia.' },
+            { status: 403 }
+          );
+        }
+
         const isPassValid = await comparePassword(trimmedPass, fsVoter.randomPassword || fsVoter.password);
         if (!isPassValid) {
           writeAuditLog('LOGIN_FAILED', lowerNim, '127.0.0.1', 'Password pemilih salah').catch(() => {});

@@ -22,6 +22,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Lock,
+  Unlock,
+  ShieldAlert,
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -33,6 +36,7 @@ interface Voter {
   password?: string;
   randomPassword?: string;
   hasVoted: boolean;
+  isLocked?: boolean;
 }
 
 export default function AdminVotersPage() {
@@ -519,6 +523,47 @@ export default function AdminVotersPage() {
     setIsPrintModalOpen(false);
   };
 
+  // Handler Lock / Unlock Pemilih
+  const [isLocking, setIsLocking] = useState(false);
+  const handleLockVoters = async (isLocked: boolean, target: 'unvoted' | 'all' | 'ids', customIds?: number[]) => {
+    const targetIds = customIds || selectedIds;
+    const confirmMsg = isLocked
+      ? target === 'unvoted'
+        ? 'Apakah Anda yakin ingin KUNCI / NONAKTIFKAN semua akun mahasiswa yang BELUM MEMILIH? (Mahasiswa yang belum memilih tidak akan bisa login lagi saat TPS ditutup).'
+        : `Apakah Anda yakin ingin KUNCI ${targetIds.length} akun pemilih terpilih?`
+      : target === 'unvoted'
+        ? 'Apakah Anda yakin ingin BUKAI KUNCI semua akun mahasiswa yang BELUM MEMILIH?'
+        : `Apakah Anda yakin ingin BUKA KUNCI ${targetIds.length} akun pemilih terpilih?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setIsLocking(true);
+    try {
+      const res = await fetch('/api/voters', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isLocked,
+          target,
+          ids: targetIds,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.message || 'Gagal mengubah status kunci akun pemilih.');
+        return;
+      }
+
+      alert(data.message || 'Berhasil memperbarui status kunci pemilih.');
+      fetchVotersData();
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsLocking(false);
+    }
+  };
+
   // Handler Export Data Pemilih ke Excel (.xlsx)
   const handleExportExcel = async (exportAll: boolean = false) => {
     const listToExport = exportAll ? filteredVoters : voters.filter((v) => selectedIds.includes(v.id));
@@ -751,11 +796,29 @@ export default function AdminVotersPage() {
 
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             <button
+              onClick={() => handleLockVoters(true, 'unvoted')}
+              disabled={isLocking}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-amber-200 transition shadow-sm disabled:opacity-50"
+              title="Kunci / Nonaktifkan semua akun mahasiswa yang belum memilih saat TPS ditutup"
+            >
+              <Lock className="w-4 h-4 text-amber-600" />
+              <span>Kunci Akun Belum Memilih ({voters.filter(v => !v.hasVoted).length})</span>
+            </button>
+            <button
+              onClick={() => handleLockVoters(false, 'unvoted')}
+              disabled={isLocking}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-emerald-200 transition shadow-sm disabled:opacity-50"
+              title="Buka kembali kunci akses login semua akun mahasiswa yang belum memilih"
+            >
+              <Unlock className="w-4 h-4 text-emerald-600" />
+              <span>Buka Kunci</span>
+            </button>
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex-1 md:flex-none px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200 transition shadow-sm"
             >
               <UserPlus className="w-4 h-4 text-emerald-600" />
-              <span>Tambah Pemilih Manual</span>
+              <span>Tambah Manual</span>
             </button>
             <button
               onClick={() => {
@@ -766,7 +829,7 @@ export default function AdminVotersPage() {
               className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/20"
             >
               <Upload className="w-4 h-4" />
-              <span>Upload File Excel</span>
+              <span>Upload Excel</span>
             </button>
             <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" />
           </div>
@@ -791,6 +854,24 @@ export default function AdminVotersPage() {
               {/* Batch Action Buttons */}
               {selectedIds.length > 0 && (
                 <>
+                  <button
+                    onClick={() => handleLockVoters(true, 'ids')}
+                    disabled={isLocking}
+                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs border border-amber-200 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                    title="Kunci akun pemilih terpilih"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Kunci ({selectedIds.length})</span>
+                  </button>
+                  <button
+                    onClick={() => handleLockVoters(false, 'ids')}
+                    disabled={isLocking}
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-xs border border-emerald-200 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                    title="Buka kunci akun pemilih terpilih"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Buka ({selectedIds.length})</span>
+                  </button>
                   <button
                     onClick={() => setIsPrintModalOpen(true)}
                     className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl text-xs border border-emerald-200 transition flex items-center gap-1.5 shadow-sm"
@@ -910,18 +991,38 @@ export default function AdminVotersPage() {
                         {voter.randomPassword || voter.password || '—'}
                       </td>
                       <td className="p-3.5 text-center">
-                        {voter.hasVoted ? (
-                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-[10px]">
-                            Sudah Memilih
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold text-[10px]">
-                            Belum Memilih
-                          </span>
-                        )}
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {voter.hasVoted ? (
+                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-[10px]">
+                              Sudah Memilih
+                            </span>
+                          ) : voter.isLocked ? (
+                            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold text-[10px] flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-amber-600" />
+                              <span>Terkunci (TPS Tutup)</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold text-[10px]">
+                              Belum Memilih
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {!voter.hasVoted && (
+                            <button
+                              onClick={() => handleLockVoters(!voter.isLocked, 'ids', [voter.id])}
+                              className={`p-1.5 rounded-lg transition border ${
+                                voter.isLocked
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
+                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200'
+                              }`}
+                              title={voter.isLocked ? 'Buka Kunci Akun' : 'Kunci / Nonaktifkan Login Akun'}
+                            >
+                              {voter.isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleOpenEditModal(voter)}
                             className="p-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 rounded-lg transition border border-slate-200"

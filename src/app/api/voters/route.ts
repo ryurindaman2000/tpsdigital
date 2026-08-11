@@ -32,6 +32,7 @@ export async function GET() {
         name: v.name,
         randomPassword: v.randomPassword || '***',
         hasVoted: v.hasVoted || false,
+        isLocked: v.isLocked || false,
         votedAt: v.votedAt || null,
         createdAt: v.createdAt || null,
       }));
@@ -295,6 +296,80 @@ export async function PUT(request: Request) {
     console.error('Error updating voter:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Gagal memperbarui data pemilih.' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/voters - Kunci / Buka Akses Login Pemilih (Lock / Unlock Account)
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { isLocked, target = 'unvoted', ids = [] } = body || {};
+
+    if (typeof isLocked !== 'boolean') {
+      return NextResponse.json(
+        { success: false, message: 'Status isLocked wajib diisi (true/false).' },
+        { status: 400 }
+      );
+    }
+
+    const existingUsers = await getFsCollection('users');
+    const voterUsers = existingUsers.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
+
+    let targetVoters: any[] = [];
+    if (target === 'unvoted') {
+      // Hanya pemilih yang BELUM MEMILIH
+      targetVoters = voterUsers.filter((u: any) => !u.hasVoted);
+    } else if (target === 'ids' && Array.isArray(ids) && ids.length > 0) {
+      // Pemilih terpilih berdasarkan ID
+      targetVoters = voterUsers.filter((u: any) => ids.includes(u.id) || ids.includes(Number(u.id)));
+    } else if (target === 'all') {
+      // Semua pemilih
+      targetVoters = voterUsers;
+    }
+
+    if (targetVoters.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'Tidak ada data pemilih yang sesuai untuk diperbarui status kuncinya.',
+        updatedCount: 0,
+      });
+    }
+
+    // Eksekusi Update Batch Paralel (Maksimal 100 per Chunks)
+    const chunkSize = 100;
+    let updatedCount = 0;
+
+    for (let i = 0; i < targetVoters.length; i += chunkSize) {
+      const chunk = targetVoters.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((v: any) =>
+          setFsDoc('users', String(v.id || v.nim), {
+            isLocked: isLocked,
+          })
+        )
+      );
+      updatedCount += chunk.length;
+    }
+
+    const adminUser = await getSessionUser();
+    await writeAuditLog(
+      'VOTER_LOCK_STATUS_CHANGED',
+      adminUser?.nim || 'admin',
+      undefined,
+      `${isLocked ? 'KUNCI' : 'BUKA'} akun pemilih (${target}): ${updatedCount} akun`
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Berhasil ${isLocked ? 'mengunci' : 'membuka'} akses login ${updatedCount} akun pemilih.`,
+      updatedCount,
+    });
+  } catch (error: any) {
+    console.error('Error changing voter lock status:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Gagal memperbarui status kunci pemilih.' },
       { status: 500 }
     );
   }
