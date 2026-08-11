@@ -480,16 +480,12 @@ export default function AdminDashboardPage() {
 
     let unsubVotes: (() => void) | null = null;
     let unsubCands: (() => void) | null = null;
-    let unsubUsers: (() => void) | null = null;
 
     try {
       unsubVotes = onSnapshot(collection(db, 'votes'), () => {
         triggerDebouncedFetch();
       });
       unsubCands = onSnapshot(collection(db, 'candidates'), () => {
-        triggerDebouncedFetch();
-      });
-      unsubUsers = onSnapshot(collection(db, 'users'), () => {
         triggerDebouncedFetch();
       });
     } catch (e) {
@@ -500,7 +496,6 @@ export default function AdminDashboardPage() {
       if (debounceTimer) clearTimeout(debounceTimer);
       if (unsubVotes) unsubVotes();
       if (unsubCands) unsubCands();
-      if (unsubUsers) unsubUsers();
     };
   }, [router]);
 

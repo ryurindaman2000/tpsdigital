@@ -353,20 +353,6 @@ export default function AdminVotersPage() {
     }
 
     fetchVotersData();
-
-    // Real-time Firebase Firestore Listener (Instant DPT updates & 0 Polling Overhead)
-    let unsubUsers: (() => void) | null = null;
-    try {
-      unsubUsers = onSnapshot(collection(db, 'users'), () => {
-        fetchVotersData();
-      });
-    } catch (e) {
-      console.warn('[Voters Realtime Listener Error]:', e);
-    }
-
-    return () => {
-      if (unsubUsers) unsubUsers();
-    };
   }, []);
 
   // Synchronize filteredVoters & reset page to 1 whenever voters or searchTerm changes
