@@ -215,22 +215,35 @@ export default function AdminVotersPage() {
         const jsonRows: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         jsonRows.forEach((row: any[], idx: number) => {
-          if (!row || row.length < 2) return;
-          const col0 = String(row[0] || '').trim();
-          const col1 = String(row[1] || '').trim();
+          if (!row || row.length === 0) return;
+
+          // Deteksi otomatis letak kolom NIM dan Nama:
+          // Jika Excel 3 kolom: [No, NIM, Nama] -> col0 = No, col1 = NIM, col2 = Nama
+          // Jika Excel 2 kolom: [NIM, Nama] -> col0 = NIM, col1 = Nama
+          let nimStr = '';
+          let nameStr = '';
+
+          if (row.length >= 3) {
+            nimStr = String(row[1] || '').trim();
+            nameStr = String(row[2] || '').trim();
+          } else {
+            nimStr = String(row[0] || '').trim();
+            nameStr = String(row[1] || '').trim();
+          }
 
           // Lewati Baris Header Tabel
           if (
             idx === 0 &&
-            (col0.toLowerCase().includes('id') ||
-              col0.toLowerCase().includes('nim') ||
-              col1.toLowerCase().includes('nama'))
+            (nimStr.toLowerCase().includes('id') ||
+              nimStr.toLowerCase().includes('nim') ||
+              nameStr.toLowerCase().includes('nama'))
           ) {
             return;
           }
 
-          if (col0 && col1) {
-            votersToUpload.push({ nim: col0, name: col1 });
+          // Validasi: NIM dan Nama harus ada dan Nama tidak boleh kosong
+          if (nimStr && nameStr && nameStr !== '—' && nameStr !== '***') {
+            votersToUpload.push({ nim: nimStr, name: nameStr });
           }
         });
       }
