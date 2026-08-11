@@ -86,6 +86,25 @@ export default function AdminVotersPage() {
     duplicateList: string[];
   } | null>(null);
 
+  // Lock Confirm & Result Premium Modals
+  const [lockConfirmModal, setLockConfirmModal] = useState<{
+    isOpen: boolean;
+    isLocked: boolean;
+    target: 'unvoted' | 'all' | 'ids';
+    ids?: number[];
+    title: string;
+    description: string;
+    count: number;
+  } | null>(null);
+
+  const [lockResultModal, setLockResultModal] = useState<{
+    isOpen: boolean;
+    isSuccess: boolean;
+    title: string;
+    message: string;
+    count?: number;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Download Template Excel (.xlsx) Resmi
@@ -523,19 +542,41 @@ export default function AdminVotersPage() {
     setIsPrintModalOpen(false);
   };
 
-  // Handler Lock / Unlock Pemilih
+  // Handler Lock / Unlock Pemilih (Dengan Modal Pop-Up Premium)
   const [isLocking, setIsLocking] = useState(false);
-  const handleLockVoters = async (isLocked: boolean, target: 'unvoted' | 'all' | 'ids', customIds?: number[]) => {
+
+  const handleLockVoters = (isLocked: boolean, target: 'unvoted' | 'all' | 'ids', customIds?: number[]) => {
     const targetIds = customIds || selectedIds;
-    const confirmMsg = isLocked
+    const targetCount = target === 'unvoted' 
+      ? voters.filter(v => !v.hasVoted).length 
+      : target === 'all' 
+      ? voters.length 
+      : targetIds.length;
+
+    const title = isLocked ? 'Kunci / Nonaktifkan Login Pemilih' : 'Buka Kunci Login Pemilih';
+    const description = isLocked
       ? target === 'unvoted'
         ? 'Apakah Anda yakin ingin KUNCI / NONAKTIFKAN semua akun mahasiswa yang BELUM MEMILIH? (Mahasiswa yang belum memilih tidak akan bisa login lagi saat TPS ditutup).'
-        : `Apakah Anda yakin ingin KUNCI ${targetIds.length} akun pemilih terpilih?`
+        : `Apakah Anda yakin ingin KUNCI ${targetCount} akun pemilih terpilih?`
       : target === 'unvoted'
-        ? 'Apakah Anda yakin ingin BUKAI KUNCI semua akun mahasiswa yang BELUM MEMILIH?'
-        : `Apakah Anda yakin ingin BUKA KUNCI ${targetIds.length} akun pemilih terpilih?`;
+        ? 'Apakah Anda yakin ingin BUKA KUNCI semua akun mahasiswa yang BELUM MEMILIH?'
+        : `Apakah Anda yakin ingin BUKA KUNCI ${targetCount} akun pemilih terpilih?`;
 
-    if (!confirm(confirmMsg)) return;
+    setLockConfirmModal({
+      isOpen: true,
+      isLocked,
+      target,
+      ids: targetIds,
+      title,
+      description,
+      count: targetCount,
+    });
+  };
+
+  const executeLockProcess = async () => {
+    if (!lockConfirmModal) return;
+    const { isLocked, target, ids } = lockConfirmModal;
+    setLockConfirmModal(null);
 
     setIsLocking(true);
     try {
@@ -545,20 +586,36 @@ export default function AdminVotersPage() {
         body: JSON.stringify({
           isLocked,
           target,
-          ids: targetIds,
+          ids,
         }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        alert(data.message || 'Gagal mengubah status kunci akun pemilih.');
+        setLockResultModal({
+          isOpen: true,
+          isSuccess: false,
+          title: 'Gagal Memperbarui Kunci',
+          message: data.message || 'Gagal mengubah status kunci akun pemilih.',
+        });
         return;
       }
 
-      alert(data.message || 'Berhasil memperbarui status kunci pemilih.');
+      setLockResultModal({
+        isOpen: true,
+        isSuccess: true,
+        title: isLocked ? 'Berhasil Mengunci Akun Pemilih' : 'Berhasil Membuka Kunci Pemilih',
+        message: data.message || `Berhasil memperbarui status kunci ${data.updatedCount || 0} pemilih.`,
+        count: data.updatedCount || 0,
+      });
       fetchVotersData();
     } catch (err) {
-      alert('Terjadi kesalahan koneksi.');
+      setLockResultModal({
+        isOpen: true,
+        isSuccess: false,
+        title: 'Kesalahan Koneksi',
+        message: 'Terjadi kesalahan koneksi saat memperbarui status kunci pemilih.',
+      });
     } finally {
       setIsLocking(false);
     }
@@ -1609,6 +1666,97 @@ export default function AdminVotersPage() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREMIUM: Konfirmasi Kunci / Buka Akses Pemilih */}
+      {lockConfirmModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-slate-900 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Ambient Accent Glow */}
+            <div className={`absolute top-0 right-0 w-36 h-36 blur-3xl rounded-full pointer-events-none ${lockConfirmModal.isLocked ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`} />
+
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className={`p-4 rounded-2xl border shadow-inner ${lockConfirmModal.isLocked ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
+                {lockConfirmModal.isLocked ? <Lock className="w-8 h-8" /> : <Unlock className="w-8 h-8" />}
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                {lockConfirmModal.title}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {lockConfirmModal.description}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl flex justify-between items-center text-xs font-semibold">
+              <span className="text-slate-500">Total Akun Terpengaruh:</span>
+              <span className={`font-mono font-bold px-2.5 py-1 rounded-lg border ${lockConfirmModal.isLocked ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>
+                {lockConfirmModal.count} Mahasiswa
+              </span>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setLockConfirmModal(null)}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={executeLockProcess}
+                disabled={isLocking}
+                className={`flex-1 py-3 px-4 font-bold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2 text-white ${
+                  lockConfirmModal.isLocked
+                    ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
+                    : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
+                }`}
+              >
+                {isLocking ? (
+                  <>
+                    <LoaderCircle className="w-4 h-4 animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  <>
+                    {lockConfirmModal.isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                    <span>Ya, {lockConfirmModal.isLocked ? 'Kunci Sekarang' : 'Buka Kunci'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREMIUM: Hasil / Notifikasi Kunci & Buka Akses Pemilih */}
+      {lockResultModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-slate-900 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Ambient Accent Glow */}
+            <div className={`absolute top-0 right-0 w-36 h-36 blur-3xl rounded-full pointer-events-none ${lockResultModal.isSuccess ? 'bg-emerald-500/10' : 'bg-red-500/10'}`} />
+
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className={`p-4 rounded-2xl border shadow-inner ${lockResultModal.isSuccess ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                {lockResultModal.isSuccess ? <CheckCircle2 className="w-8 h-8" /> : <AlertCircle className="w-8 h-8" />}
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                {lockResultModal.title}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {lockResultModal.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setLockResultModal(null)}
+              className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition shadow-lg"
+            >
+              Mengerti &amp; Tutup
+            </button>
           </div>
         </div>
       )}
