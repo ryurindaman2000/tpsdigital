@@ -103,6 +103,11 @@ export default function VoterLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Jika 403 (Akun Terkunci / TPS Ditutup) — JANGAN fallback ke Firebase SDK!
+        if (res.status === 403) {
+          throw new Error(data.message || 'Akun Anda saat ini dinonaktifkan oleh Panitia.');
+        }
+
         // Fallback: Coba Otentikasi Langsung via Firebase Web SDK Client Browser
         try {
           const { collection, getDocs } = await import('firebase/firestore');
@@ -117,6 +122,8 @@ export default function VoterLoginPage() {
               String(voterData.nim || '').trim().toLowerCase() === loginNim.trim().toLowerCase() &&
               (voterData.randomPassword === loginPass.trim() || voterData.password === loginPass.trim())
             ) {
+              // Jangan izinkan login jika akun terkunci
+              if (voterData.isLocked) return;
               matchedVoter = voterData;
             }
           });
