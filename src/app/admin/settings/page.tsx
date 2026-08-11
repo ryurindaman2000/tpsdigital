@@ -1005,7 +1005,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
           </div>
         </>
       )}
-    </main>
 
       {/* MODAL POPUP PREMIUM: Penolakan Ukuran Gambar Tidak Sesuai */}
       {imageErrorModal?.isOpen && (
@@ -1056,6 +1055,7 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
           </div>
         </div>
       )}
+    </main>
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto w-full text-center py-4 text-xs text-slate-500 flex justify-center items-center flex-wrap gap-2 px-6">
