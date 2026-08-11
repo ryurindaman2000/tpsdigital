@@ -761,16 +761,25 @@ export default function AdminVotersPage() {
                 </>
               )}
 
-              {/* Search Field */}
-              <div className="relative flex-1 md:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              {/* Search Field Kolom Pencarian DPT */}
+              <div className="relative flex-1 md:w-72">
+                <Search className="w-4 h-4 text-emerald-600 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Cari ID Pemilih atau Nama Pemilih..."
+                  placeholder="Cari berdasarkan ID Pemilih atau Nama..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 transition"
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition shadow-inner font-medium"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 transition"
+                    title="Bersihkan Pencarian"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
