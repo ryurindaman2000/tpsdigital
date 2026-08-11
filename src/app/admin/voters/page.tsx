@@ -1038,7 +1038,7 @@ export default function AdminVotersPage() {
                           ) : voter.isLocked ? (
                             <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold text-[10px] flex items-center gap-1">
                               <Lock className="w-3 h-3 text-amber-600" />
-                              <span>Terkunci (TPS Tutup)</span>
+                              <span>Terkunci</span>
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold text-[10px]">
