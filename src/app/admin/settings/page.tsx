@@ -485,7 +485,7 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
   const activeLogoSrc = logoUrl || '/images/default-logo.png';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
+    <main className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
       {/* Header Admin */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3">
@@ -504,7 +504,7 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
+      <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         {/* Action Bar / Tombol Kembali ke Dashboard */}
         <div className="flex justify-between items-center">
           <Link
@@ -1005,6 +1005,7 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
           </div>
         </>
       )}
+      </div>
 
       {/* MODAL POPUP PREMIUM: Penolakan Ukuran Gambar Tidak Sesuai */}
       {imageErrorModal?.isOpen && (
@@ -1055,7 +1056,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
           </div>
         </div>
       )}
-    </main>
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto w-full text-center py-4 text-xs text-slate-500 flex justify-center items-center flex-wrap gap-2 px-6">
@@ -1073,6 +1073,6 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
           </a>
         </span>
       </footer>
-    </div>
+    </main>
   );
 }
