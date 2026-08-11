@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getFsCollection } from '@/lib/firestore-rest';
 
 export const dynamic = 'force-dynamic';
+
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '';
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
 
 // GET /api/debug-lock
 export async function GET() {
   const logs: string[] = [];
-  try {
-    const users = await getFsCollection('users');
-    logs.push(`getFsCollection('users') returned ${users.length} items`);
-    if (users.length > 0) {
-      logs.push(`First user NIM: ${users[0].nim}, isLocked: ${users[0].isLocked}`);
+  const dbIds = ['default', '(default)'];
+
+  for (const dbId of dbIds) {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${dbId}/documents/users?key=${API_KEY}`;
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      const text = await res.text();
+      logs.push(`DB [${dbId}] status: ${res.status}`);
+      logs.push(`DB [${dbId}] snippet: ${text.substring(0, 200)}`);
+    } catch (e: any) {
+      logs.push(`DB [${dbId}] err: ${e.message}`);
     }
-  } catch (e: any) {
-    logs.push(`Error: ${e.message}`);
   }
 
   return NextResponse.json({ logs });
