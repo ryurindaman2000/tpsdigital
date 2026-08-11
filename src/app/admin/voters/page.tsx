@@ -523,6 +523,44 @@ export default function AdminVotersPage() {
     setIsPrintModalOpen(false);
   };
 
+  // Handler Export Data Pemilih ke Excel (.xlsx)
+  const handleExportExcel = async (exportAll: boolean = false) => {
+    const listToExport = exportAll ? filteredVoters : voters.filter((v) => selectedIds.includes(v.id));
+    if (listToExport.length === 0) return;
+
+    try {
+      const XLSXLib = await loadXlsxScript();
+      
+      const exportData = listToExport.map((v, index) => ({
+        'No': index + 1,
+        'ID Pemilih (NIM/NIK)': v.nim,
+        'Nama Pemilih': v.name,
+        'Password Acak TPS': v.randomPassword || v.password || '—',
+        'Status Voting': v.hasVoted ? 'Sudah Memilih' : 'Belum Memilih',
+      }));
+
+      const worksheet = XLSXLib.utils.json_to_sheet(exportData);
+      
+      // Mengatur lebar kolom otomatis agar rapi
+      worksheet['!cols'] = [
+        { wch: 6 },
+        { wch: 22 },
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 18 },
+      ];
+
+      const workbook = XLSXLib.utils.book_new();
+      XLSXLib.utils.book_append_sheet(workbook, worksheet, 'Daftar Pemilih TPS');
+
+      const fileName = `Daftar_Pemilih_TPS_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSXLib.writeFile(workbook, fileName);
+    } catch (err) {
+      console.error('Gagal mengeksport file Excel:', err);
+      alert('Gagal membuat file Excel. Pastikan koneksi internet stabil.');
+    }
+  };
+
   // Manual Input State
   const [newNim, setNewNim] = useState('');
   const [newName, setNewName] = useState('');
@@ -763,6 +801,14 @@ export default function AdminVotersPage() {
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>Cetak Kartu ({selectedIds.length})</span>
+                  </button>
+                  <button
+                    onClick={() => handleExportExcel(false)}
+                    className="px-3.5 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-xl text-xs border border-teal-200 transition flex items-center gap-1.5 shadow-sm"
+                    title="Download Data Pemilih Terpilih ke Format Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Cetak Excel ({selectedIds.length})</span>
                   </button>
                   <button
                     onClick={() => setIsDeleteConfirmOpen(true)}
@@ -1173,19 +1219,31 @@ export default function AdminVotersPage() {
               </p>
             </div>
 
-            <div className="flex gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
               <button
                 onClick={() => setIsPrintModalOpen(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200"
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition border border-slate-200"
               >
                 Batal
               </button>
               <button
                 type="button"
-                onClick={handlePrintBatchCards}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/20"
+                onClick={() => {
+                  handleExportExcel(false);
+                  setIsPrintModalOpen(false);
+                }}
+                className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-teal-600/20 flex items-center justify-center gap-1.5"
               >
-                Unduh / Cetak Dokumen PDF
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Cetak Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintBatchCards}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak PDF</span>
               </button>
             </div>
           </div>
