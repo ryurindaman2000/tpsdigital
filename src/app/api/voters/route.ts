@@ -355,7 +355,7 @@ export async function PATCH(request: Request) {
         chunk.map(async (v: any) => {
           const docId = String(v.nim || v.id);
           const ok = await setFsDoc('users', docId, {
-            isLocked: isLocked,
+            isLocked: Boolean(isLocked),
           });
           return ok;
         })
