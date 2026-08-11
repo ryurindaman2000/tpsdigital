@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       }
 
       const activeAdminPassword = fsAdminDoc ? (fsAdminDoc.randomPassword || fsAdminDoc.password || envAdminPassword) : envAdminPassword;
-      const isPassCorrect = (trimmedPass === activeAdminPassword) || (trimmedPass === envAdminPassword);
+      const isPassCorrect = await comparePassword(trimmedPass, activeAdminPassword);
 
       if (!isPassCorrect) {
         writeAuditLog('LOGIN_FAILED', `admin:${trimmedNim}`, '127.0.0.1', 'Password admin salah').catch(() => {});

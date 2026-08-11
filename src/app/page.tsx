@@ -19,25 +19,6 @@ export default function VoterLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Splash Screen State
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashFading, setSplashFading] = useState(false);
-
-  useEffect(() => {
-    const timer1 = setTimeout(() => {
-      setSplashFading(true);
-    }, 2000);
-
-    const timer2 = setTimeout(() => {
-      setShowSplash(false);
-    }, 2500);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, []);
-
   // QR Code Camera Scanner Modal State
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -395,51 +376,6 @@ export default function VoterLoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between relative overflow-hidden">
-      {/* REVAMPED PREMIUM WHITE SPLASH SCREEN WITH ANIMATION */}
-      {showSplash && (
-        <div
-          className={`fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center transition-all duration-700 ease-in-out ${splashFading ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
-            }`}
-        >
-          {/* Subtle Ambient Glow Background Orbs */}
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
-          <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
-
-          {/* Tampilan Utama Splash Screen: Logo Instansi Tanpa Card di Tengah */}
-          <div className="flex flex-col items-center space-y-6 animate-in zoom-in-90 fade-in duration-500 relative z-10 my-auto">
-            <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
-              <img
-                src={activeLogoSrc ? `${activeLogoSrc}?t=${Date.now()}` : '/images/default-logo.png'}
-                alt="Logo Instansi"
-                className="w-full h-full object-contain drop-shadow-md animate-pulse"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/default-logo.png';
-                }}
-              />
-            </div>
-
-            {/* Judul TPS-Digital */}
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-none drop-shadow-sm">
-              {appName}
-            </h1>
-
-            {/* Premium Animated Loading Bar */}
-            <div className="w-44 bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200/80 shadow-inner">
-              <div className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 h-full w-full animate-pulse rounded-full" />
-            </div>
-          </div>
-
-          {/* Footer Splash Screen: Gambar splashscreen.png Diperbesar Proposional */}
-          <div className="relative z-10 pb-6 pt-2">
-            <img
-              src="/images/splashscreen.png"
-              alt="Powered By Pancakalabs"
-              className="h-16 sm:h-20 md:h-24 w-auto object-contain mx-auto opacity-95 transition transform hover:scale-105 drop-shadow-sm"
-            />
-          </div>
-        </div>
-      )}
-
       {/* FULL-WIDTH FIXED TOP BAR HEADER (Tetap Pinned di Atas Saat Scroll) */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3.5">
