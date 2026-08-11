@@ -19,6 +19,8 @@ import {
   FileText,
   X,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -42,6 +44,10 @@ export default function AdminVotersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -363,8 +369,9 @@ export default function AdminVotersPage() {
     };
   }, []);
 
-  // Synchronize filteredVoters whenever voters or searchTerm changes
+  // Synchronize filteredVoters & reset page to 1 whenever voters or searchTerm changes
   useEffect(() => {
+    setCurrentPage(1);
     if (!searchTerm.trim()) {
       setFilteredVoters(voters);
     } else {
@@ -378,6 +385,12 @@ export default function AdminVotersPage() {
       );
     }
   }, [voters, searchTerm]);
+
+  // Perhitungan Pagination Data
+  const totalPages = Math.ceil(filteredVoters.length / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const paginatedVoters = filteredVoters.slice(indexOfFirstItem, indexOfLastItem);
 
   // Handler Cetak Kartu Akses TPS (Window Print Ready PDF Grid A4 Presisi Kompak)
   const handlePrintBatchCards = () => {
@@ -824,7 +837,7 @@ export default function AdminVotersPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredVoters.map((voter) => (
+                  paginatedVoters.map((voter) => (
                     <tr key={voter.id} className="hover:bg-slate-50 transition">
                       <td className="p-3.5 text-center">
                         <input
@@ -877,6 +890,94 @@ export default function AdminVotersPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls Footer Bar */}
+          {filteredVoters.length > 0 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+              <div className="flex items-center gap-3">
+                <span>
+                  Menampilkan{' '}
+                  <strong className="text-slate-900 font-bold">
+                    {filteredVoters.length === 0 ? 0 : indexOfFirstItem + 1}
+                  </strong>{' '}
+                  -{' '}
+                  <strong className="text-slate-900 font-bold">
+                    {Math.min(indexOfLastItem, filteredVoters.length)}
+                  </strong>{' '}
+                  dari <strong className="text-slate-900 font-bold">{filteredVoters.length}</strong> data pemilih
+                </span>
+
+                <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+                  <span className="text-slate-500 text-[11px]">Tampilkan per halaman:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Page Number Buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sebelumnya</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                      );
+                    })
+                    .map((page, index, array) => {
+                      const prevPage = array[index - 1];
+                      const showEllipsis = prevPage && page - prevPage > 1;
+
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsis && <span className="px-1 text-slate-400 font-bold">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`min-w-[32px] h-[32px] px-2 rounded-lg text-xs font-bold transition flex items-center justify-center ${
+                              currentPage === page
+                                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                                : 'bg-white border border-slate-200 hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1"
+                >
+                  <span className="hidden sm:inline">Berikutnya</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
