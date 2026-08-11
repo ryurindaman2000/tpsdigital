@@ -712,7 +712,10 @@ export default function AdminVotersPage() {
   // Simpan Pemilih Baru
   const handleSaveManualVoter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNim.trim() || !newName.trim()) return;
+    if (!newNim.trim() || !newName.trim()) {
+      alert('ID Pemilih dan Nama Lengkap Pemilih WAJIB DIISI!');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -1188,7 +1191,9 @@ export default function AdminVotersPage() {
 
             <form onSubmit={handleSaveManualVoter} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">ID Pemilih</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ID Pemilih <span className="text-red-500 font-bold">*</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -1200,7 +1205,9 @@ export default function AdminVotersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap Pemilih</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nama Lengkap Pemilih <span className="text-red-500 font-bold">*</span>
+                </label>
                 <input
                   type="text"
                   required
