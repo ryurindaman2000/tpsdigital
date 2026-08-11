@@ -84,11 +84,14 @@ export async function getFsCollection(collectionName: string) {
   }
 }
 
-// 3. Set / Patch Document for Firestore REST API v1 (Upsert Document)
+// 3. Set / Patch Document for Firestore REST API v1 (Upsert Document dengan field merge)
 export async function setFsDoc(collectionName: string, docId: string, data: Record<string, any>) {
   try {
     const payload = encodeFirestoreFields(data);
-    const res = await fetchWithDbFallback(`${collectionName}/${docId}`, {
+    const fieldPaths = Object.keys(data).map(key => `updateMask.fieldPaths=${encodeURIComponent(key)}`).join('&');
+    const pathWithMask = fieldPaths ? `${collectionName}/${docId}?${fieldPaths}` : `${collectionName}/${docId}`;
+
+    const res = await fetchWithDbFallback(pathWithMask, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
