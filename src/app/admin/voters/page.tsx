@@ -1038,7 +1038,7 @@ export default function AdminVotersPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           {!voter.hasVoted && (
                             <button
-                              onClick={() => handleLockVoters(!voter.isLocked, 'ids', [voter.id])}
+                              onClick={() => handleLockVoters(!voter.isLocked, 'ids', [voter.id, voter.nim as any])}
                               className={`p-1.5 rounded-lg transition border ${
                                 voter.isLocked
                                   ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
