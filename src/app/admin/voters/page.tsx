@@ -21,6 +21,7 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -42,6 +43,7 @@ export default function AdminVotersPage() {
   const [voters, setVoters] = useState<Voter[]>([]);
   const [filteredVoters, setFilteredVoters] = useState<Voter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'voted' | 'not_voted'>('all');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -355,22 +357,30 @@ export default function AdminVotersPage() {
     fetchVotersData();
   }, []);
 
-  // Synchronize filteredVoters & reset page to 1 whenever voters or searchTerm changes
+  // Synchronize filteredVoters & reset page to 1 whenever voters, searchTerm, or statusFilter changes
   useEffect(() => {
     setCurrentPage(1);
-    if (!searchTerm.trim()) {
-      setFilteredVoters(voters);
-    } else {
+    let result = voters;
+
+    // Filter berdasarkan status voting
+    if (statusFilter === 'voted') {
+      result = result.filter((v) => v.hasVoted === true);
+    } else if (statusFilter === 'not_voted') {
+      result = result.filter((v) => v.hasVoted === false);
+    }
+
+    // Filter berdasarkan kata kunci pencarian
+    if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      setFilteredVoters(
-        voters.filter(
-          (v) =>
-            v.nim.toLowerCase().includes(term) ||
-            v.name.toLowerCase().includes(term)
-        )
+      result = result.filter(
+        (v) =>
+          v.nim.toLowerCase().includes(term) ||
+          v.name.toLowerCase().includes(term)
       );
     }
-  }, [voters, searchTerm]);
+
+    setFilteredVoters(result);
+  }, [voters, searchTerm, statusFilter]);
 
   // Perhitungan Pagination Data
   const totalPages = Math.ceil(filteredVoters.length / itemsPerPage) || 1;
@@ -806,8 +816,23 @@ export default function AdminVotersPage() {
                 </>
               )}
 
+              {/* Dropdown Filter Status Voting */}
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | 'voted' | 'not_voted')}
+                  className="pl-8 pr-7 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition shadow-inner font-bold cursor-pointer appearance-none"
+                >
+                  <option value="all">Semua Status ({voters.length})</option>
+                  <option value="voted">Sudah Memilih ({voters.filter(v => v.hasVoted).length})</option>
+                  <option value="not_voted">Belum Memilih ({voters.filter(v => !v.hasVoted).length})</option>
+                </select>
+                <Filter className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-2.5 pointer-events-none" />
+                <div className="absolute right-2.5 top-3 pointer-events-none text-slate-400 text-[10px]">▼</div>
+              </div>
+
               {/* Search Field Kolom Pencarian DPT */}
-              <div className="relative flex-1 md:w-72">
+              <div className="relative flex-1 md:w-64">
                 <Search className="w-4 h-4 text-emerald-600 absolute left-3 top-2.5" />
                 <input
                   type="text"
