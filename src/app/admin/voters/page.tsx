@@ -1297,17 +1297,35 @@ export default function AdminVotersPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+            {/* Info Petunjuk Klik Refresh Data */}
+            <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5 text-left">
+              <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-emerald-800 leading-snug">
+                Data berhasil diproses ke database. Jika data baru belum muncul di tabel, silakan klik tombol <strong>Refresh Data</strong> di bawah.
+              </p>
+            </div>
 
-            {/* Tombol Tutup Laporan */}
-            <button
-              type="button"
-              onClick={() => setImportResultModal(null)}
-              className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition shadow-lg"
-            >
-              Tutup Laporan
-            </button>
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetchVotersData();
+                  setImportResultModal(null);
+                }}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh Data
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportResultModal(null)}
+                className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
