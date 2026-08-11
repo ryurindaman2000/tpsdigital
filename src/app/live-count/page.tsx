@@ -260,10 +260,10 @@ export default function LiveCountPage() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/admin/dashboard"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs border border-emerald-200 transition shadow-sm"
           >
-            <span>Kembali ke Halaman Login</span>
+            <span>Kembali ke Dashboard</span>
           </Link>
         </div>
       </header>
