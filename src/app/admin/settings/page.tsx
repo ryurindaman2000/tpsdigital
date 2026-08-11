@@ -56,6 +56,9 @@ export default function SettingsAdminPage() {
     recommendation: string;
   } | null>(null);
 
+  // Restore Default Confirm Modal State
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const kopInputRef = useRef<HTMLInputElement | null>(null);
@@ -375,12 +378,13 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
     }
   };
 
-  // Restore Settings ke Default bawaan sistem
-  const handleRestoreDefaultSettings = async () => {
-    if (!confirm('Apakah Anda yakin ingin mengembalikan pengaturan nama aplikasi, logo, banner, dan kop surat ke default awal?')) {
-      return;
-    }
+  // Restore Settings ke Default bawaan sistem (Menggunakan Modal Pop-Up Premium)
+  const handleRestoreDefaultSettings = () => {
+    setIsRestoreModalOpen(true);
+  };
 
+  const executeRestoreDefault = async () => {
+    setIsRestoreModalOpen(false);
     setSuccessMsg('');
     setErrorMsg('');
     setIsSubmitting(true);
@@ -949,6 +953,55 @@ function compressBase64Image(base64Str: string, maxWidth: number, maxHeight: num
             >
               <span>Mengerti, Pilih Gambar Lain</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL POPUP PREMIUM: Konfirmasi Restore Default Pengaturan */}
+      {isRestoreModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-slate-900 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Ambient Amber Glow */}
+            <div className="absolute top-0 right-0 w-36 h-36 bg-amber-500/10 blur-3xl rounded-full pointer-events-none" />
+
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-600 shadow-inner">
+                <RotateCcw className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                Restore Default Pengaturan?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Apakah Anda yakin ingin mengembalikan pengaturan <strong>Nama Aplikasi, Sub-Judul, Logo, Banner Login, dan Kop Surat TPS</strong> ke pengaturan default awal bawaan sistem?
+              </p>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl space-y-1 text-left">
+              <span className="font-bold text-amber-800 text-[11px] uppercase tracking-wider block">
+                ⚠️ Informasi Restore:
+              </span>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                Semua aset gambar logo, banner, dan kop kustom yang telah diunggah akan di-reset ke standar asli aplikasi.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsRestoreModalOpen(false)}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={executeRestoreDefault}
+                className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Ya, Restore Sekarang</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
