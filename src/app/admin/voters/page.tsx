@@ -308,9 +308,6 @@ export default function AdminVotersPage() {
       if (votersJson.success && Array.isArray(votersJson.data) && votersJson.data.length > 0) {
         setVoters(votersJson.data);
         setFilteredVoters(votersJson.data);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('voters_cache', JSON.stringify(votersJson.data));
-        }
       } else {
         // Fallback: Ambil data pemilih langsung via Firebase Web SDK Client Browser
         try {
@@ -327,6 +324,7 @@ export default function AdminVotersPage() {
                 name: data.name,
                 randomPassword: data.randomPassword || '***',
                 hasVoted: data.hasVoted || false,
+                isLocked: data.isLocked || false,
                 votedAt: data.votedAt || null,
                 createdAt: data.createdAt || null,
               });
@@ -335,9 +333,6 @@ export default function AdminVotersPage() {
           if (list.length > 0) {
             setVoters(list);
             setFilteredVoters(list);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('voters_cache', JSON.stringify(list));
-            }
           }
         } catch (clientFsErr) {
           console.warn('[Client SDK Fetch Fallback]:', clientFsErr);
@@ -363,18 +358,10 @@ export default function AdminVotersPage() {
       const localName = localStorage.getItem('app_name');
       const localSub = localStorage.getItem('app_subtitle');
       const localLogo = localStorage.getItem('app_logo');
-      const localVoters = localStorage.getItem('voters_cache');
 
       if (localName) setAppName(localName);
       if (localSub) setSubTitle(localSub);
       if (localLogo) setLogoUrl(localLogo);
-      if (localVoters) {
-        try {
-          const parsed = JSON.parse(localVoters);
-          setVoters(parsed);
-          setFilteredVoters(parsed);
-        } catch {}
-      }
     }
 
     fetchVotersData();
