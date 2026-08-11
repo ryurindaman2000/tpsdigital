@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Vote, TrendingUp, RefreshCw, CheckCircle2, ShieldCheck, ArrowRight, User } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -20,6 +21,7 @@ interface CandidateVote {
 }
 
 export default function LiveCountPage() {
+  const router = useRouter();
   const [appName, setAppName] = useState('TPS-DIGITAL');
   const [subTitle, setSubTitle] = useState('Sistem E-Voting Terenkripsi & Transparan');
   const [logoUrl, setLogoUrl] = useState<string | null>('/images/default-logo.png');
@@ -167,6 +169,19 @@ export default function LiveCountPage() {
   };
 
   useEffect(() => {
+    // PROTEKSI HALAMAN QUICK COUNT: WAJIB LOGIN SEBAGAI ADMIN
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !data.user || data.user.role !== 'ADMIN') {
+          router.replace('/');
+          return;
+        }
+      })
+      .catch(() => {
+        router.replace('/');
+      });
+
     if (typeof window !== 'undefined') {
       const localName = localStorage.getItem('app_name');
       const localSub = localStorage.getItem('app_subtitle');
