@@ -88,28 +88,37 @@ export async function POST(request: Request) {
       const duplicateList: string[] = [];
       let successCount = 0;
 
-      for (const voter of voters) {
-        const trimmedNim = String(voter.nim || '').trim();
-        const trimmedName = String(voter.name || '').trim();
-        if (!trimmedNim || !trimmedName) continue;
+      // Simpan ke Firestore secara BATCH (Massal & Sangat Hemat Quota)
+      // Pembagian batch per 100 item agar tidak melebihi payload limit
+      const chunkSize = 100;
+      for (let i = 0; i < voters.length; i += chunkSize) {
+        const chunk = voters.slice(i, i + chunkSize);
+        
+        await Promise.all(
+          chunk.map(async (voter) => {
+            const trimmedNim = String(voter.nim || '').trim();
+            const trimmedName = String(voter.name || '').trim();
+            if (!trimmedNim || !trimmedName) return;
 
-        if (existingNimSet.has(trimmedNim)) {
-          duplicateList.push(`${trimmedNim} - ${trimmedName}`);
-        } else {
-          existingNimSet.add(trimmedNim);
-          const pwd = generateRandomPassword();
+            if (existingNimSet.has(trimmedNim)) {
+              duplicateList.push(`${trimmedNim} - ${trimmedName}`);
+            } else {
+              existingNimSet.add(trimmedNim);
+              const pwd = generateRandomPassword();
 
-          // Simpan ke Firestore
-          await addFsDoc('users', {
-            nim: trimmedNim,
-            name: trimmedName,
-            randomPassword: pwd,
-            role: 'VOTER',
-            hasVoted: false,
-            createdAt: new Date().toISOString(),
-          });
-          successCount++;
-        }
+              // Gunakan setFsDoc dengan ID NIM agar idempotent dan super cepat
+              await setFsDoc('users', trimmedNim, {
+                nim: trimmedNim,
+                name: trimmedName,
+                randomPassword: pwd,
+                role: 'VOTER',
+                hasVoted: false,
+                createdAt: new Date().toISOString(),
+              });
+              successCount++;
+            }
+          })
+        );
       }
 
       const adminUser = await getSessionUser();
