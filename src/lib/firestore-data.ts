@@ -1,25 +1,32 @@
-import { getFsCollection, getFsDoc, setFsDoc } from './firestore-rest';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 export async function recalculateFirestoreSummary() {
   try {
-    // 1. Fetch Users (Voters)
-    const users = await getFsCollection('users');
+    const [userSnap, candSnap, voteSnap] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'candidates')),
+      getDocs(collection(db, 'votes')),
+    ]);
+
+    const users: any[] = [];
+    userSnap.forEach((d) => users.push({ id: d.id, ...d.data() }));
+
     const voters = users.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
     const totalVoters = voters.length;
     const hasVotedUserCount = voters.filter((u: any) => u.hasVoted === true).length;
 
-    // 2. Fetch Candidates
-    const candidatesList = await getFsCollection('candidates');
+    const candidatesList: any[] = [];
+    candSnap.forEach((d) => candidatesList.push({ id: d.id, ...d.data() }));
     candidatesList.sort((a: any, b: any) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
 
-    // 3. Fetch Votes
-    const votesList = await getFsCollection('votes');
+    const votesList: any[] = [];
+    voteSnap.forEach((d) => votesList.push(d.data()));
 
-    // Calculate votes per candidate
     const candidateVotesRaw = candidatesList.map((c: any) => {
       const voteCount = votesList.filter(
         (v: any) =>
-          (v.isValid !== false) &&
+          v.isValid !== false &&
           (Number(v.candidateId) === Number(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
       ).length;
 
@@ -55,8 +62,7 @@ export async function recalculateFirestoreSummary() {
       updatedAt: new Date().toISOString(),
     };
 
-    // Save summary document to Firestore (Collection: 'stats', Doc: 'summary')
-    await setFsDoc('stats', 'summary', summaryPayload);
+    await setDoc(doc(db, 'stats', 'summary'), summaryPayload, { merge: true });
 
     return {
       totalVoters,
@@ -74,40 +80,46 @@ export async function recalculateFirestoreSummary() {
 
 export async function getFirestoreStats() {
   try {
-    // Coba ambil dari dokumen 'stats/summary' (Hemat Kuota Reads: Cuma 1 Read!)
-    const summaryDoc = await getFsDoc('stats', 'summary');
+    const summaryRef = doc(db, 'stats', 'summary');
+    const summarySnap = await getDoc(summaryRef);
 
-    if (summaryDoc && summaryDoc.candidateVotesJson) {
-      try {
-        const candidateVotesRaw = JSON.parse(summaryDoc.candidateVotesJson);
-        const totalVoters = Number(summaryDoc.totalVoters) || 0;
-        const hasVotedCount = Number(summaryDoc.hasVotedCount) || 0;
+    if (summarySnap.exists()) {
+      const summaryDoc = summarySnap.data();
+      if (summaryDoc && summaryDoc.candidateVotesJson) {
+        try {
+          const candidateVotesRaw = JSON.parse(summaryDoc.candidateVotesJson);
+          const totalVoters = Number(summaryDoc.totalVoters) || 0;
+          const hasVotedCount = Number(summaryDoc.hasVotedCount) || 0;
 
-        const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + (Number(c.voteCount) || 0), 0);
-        const finalVotedCount = Math.max(hasVotedCount, totalVotesInBox);
-        const turnoutPercent = totalVoters > 0 ? `${Math.round((finalVotedCount / totalVoters) * 100)}%` : '0%';
+          // Jika totalVoters > 0 dan valid, gunakan cache summary (Sangat Hemat Kuota Reads!)
+          if (totalVoters > 0) {
+            const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + (Number(c.voteCount) || 0), 0);
+            const finalVotedCount = Math.max(hasVotedCount, totalVotesInBox);
+            const turnoutPercent = totalVoters > 0 ? `${Math.round((finalVotedCount / totalVoters) * 100)}%` : '0%';
 
-        const candidateVotes = candidateVotesRaw.map((c: any) => ({
-          ...c,
-          candidateNumber: Number(c.candidateNumber) || 1,
-          voteCount: Number(c.voteCount) || 0,
-          percentage: totalVotesInBox > 0 ? Math.round(((Number(c.voteCount) || 0) / totalVotesInBox) * 100) : 0,
-        }));
+            const candidateVotes = candidateVotesRaw.map((c: any) => ({
+              ...c,
+              candidateNumber: Number(c.candidateNumber) || 1,
+              voteCount: Number(c.voteCount) || 0,
+              percentage: totalVotesInBox > 0 ? Math.round(((Number(c.voteCount) || 0) / totalVotesInBox) * 100) : 0,
+            }));
 
-        return {
-          totalVoters,
-          hasVotedCount: finalVotedCount,
-          turnoutPercent,
-          abstainCount: 0,
-          candidatesCount: Number(summaryDoc.candidatesCount) || candidateVotes.length,
-          candidateVotes,
-        };
-      } catch (parseErr) {
-        console.warn('[Parse candidateVotesJson error, recalculating]:', parseErr);
+            return {
+              totalVoters,
+              hasVotedCount: finalVotedCount,
+              turnoutPercent,
+              abstainCount: 0,
+              candidatesCount: Number(summaryDoc.candidatesCount) || candidateVotes.length,
+              candidateVotes,
+            };
+          }
+        } catch (parseErr) {
+          console.warn('[Parse candidateVotesJson error, recalculating]:', parseErr);
+        }
       }
     }
 
-    // Jika belum ada dokumen summary atau error parse, hitung awal & simpan summary
+    // Jika belum ada dokumen summary atau totalVoters masih 0, kalkulasi ulang & simpan summary
     return await recalculateFirestoreSummary();
   } catch (error) {
     console.error('[Firestore Stats Error]:', error);
@@ -117,10 +129,14 @@ export async function getFirestoreStats() {
 
 export async function updateFirestoreSummaryOnVote(targetCandidateNum: number, isAbstain: boolean = false) {
   try {
-    let summaryDoc = await getFsDoc('stats', 'summary');
-    if (!summaryDoc || !summaryDoc.candidateVotesJson) {
+    const summaryRef = doc(db, 'stats', 'summary');
+    const summarySnap = await getDoc(summaryRef);
+    let summaryDoc = summarySnap.exists() ? summarySnap.data() : null;
+
+    if (!summaryDoc || !summaryDoc.candidateVotesJson || (Number(summaryDoc.totalVoters) || 0) === 0) {
       await recalculateFirestoreSummary();
-      summaryDoc = await getFsDoc('stats', 'summary');
+      const newSnap = await getDoc(summaryRef);
+      summaryDoc = newSnap.exists() ? newSnap.data() : null;
     }
 
     if (!summaryDoc || !summaryDoc.candidateVotesJson) return;
@@ -145,7 +161,6 @@ export async function updateFirestoreSummaryOnVote(targetCandidateNum: number, i
         return c;
       });
 
-      // Jika paslon belum ada di array summary, tambahkan
       if (!found) {
         candidateVotesRaw.push({
           id: String(targetCandidateNum),
@@ -171,7 +186,7 @@ export async function updateFirestoreSummaryOnVote(targetCandidateNum: number, i
       updatedAt: new Date().toISOString(),
     };
 
-    await setFsDoc('stats', 'summary', updatedPayload);
+    await setDoc(summaryRef, updatedPayload, { merge: true });
   } catch (err) {
     console.error('[Update Firestore Summary On Vote Error]:', err);
   }
