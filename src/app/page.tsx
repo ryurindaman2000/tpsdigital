@@ -89,21 +89,20 @@ export default function VoterLoginPage() {
           throw new Error(data.message || 'Akun Anda saat ini dinonaktifkan oleh Panitia.');
         }
 
-        // Fallback: Coba Otentikasi Langsung via Firebase Web SDK Client Browser
+        // Fallback: Coba Otentikasi Langsung via Firebase Web SDK Client Browser (Query Spesifik NIM -> Hemat Kuota 1 Read!)
         try {
-          const { collection, getDocs } = await import('firebase/firestore');
+          const { collection, getDocs, query, where } = await import('firebase/firestore');
           const { db: fdb } = await import('@/lib/firebase');
-          const snap = await getDocs(collection(fdb, 'users'));
+          const q = query(collection(fdb, 'users'), where('nim', '==', loginNim.trim()));
+          const snap = await getDocs(q);
           let matchedVoter: any = null;
 
           snap.forEach((d) => {
             const voterData = d.data();
             if (
-              voterData.role === 'VOTER' &&
-              String(voterData.nim || '').trim().toLowerCase() === loginNim.trim().toLowerCase() &&
+              (voterData.role === 'VOTER' || !voterData.role) &&
               (voterData.randomPassword === loginPass.trim() || voterData.password === loginPass.trim())
             ) {
-              // Jangan izinkan login jika akun terkunci
               if (voterData.isLocked) return;
               matchedVoter = voterData;
             }

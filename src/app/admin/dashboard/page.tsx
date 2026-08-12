@@ -392,37 +392,20 @@ export default function AdminDashboardPage() {
           localStorage.setItem('dash_stats', JSON.stringify(newStats));
         }
       } else {
-        // Fallback: Ambil total pemilih & suara langsung dari Client-Side Firebase Web SDK
+        // Fallback: Ambil dokumen stats/summary via Firebase Web SDK Client Browser (Hemat Quota 1 Read)
         try {
-          const { collection, getDocs } = await import('firebase/firestore');
+          const { doc: fsDoc, getDoc } = await import('firebase/firestore');
           const { db: fdb } = await import('@/lib/firebase');
 
-          const [userSnap, candSnap, votesSnap] = await Promise.all([
-            getDocs(collection(fdb, 'users')),
-            getDocs(collection(fdb, 'candidates')),
-            getDocs(collection(fdb, 'votes')),
-          ]);
-
-          let totVoters = 0;
-          let votedVoters = 0;
-          userSnap.forEach((d) => {
-            const u = d.data();
-            if (u.role === 'VOTER') {
-              totVoters++;
-              if (u.hasVoted) votedVoters++;
-            }
-          });
-
-          const totalVotesBox = votesSnap.size;
-          const finalHasVoted = Math.max(votedVoters, totalVotesBox);
-          const newStatsObj = {
-            totalVoters: totVoters,
-            hasVotedCount: finalHasVoted,
-            turnoutPercent: totVoters > 0 ? `${Math.round((finalHasVoted / totVoters) * 100)}%` : '0%',
-            totalCandidates: candSnap.size,
-          };
-
-          if (totVoters > 0) {
+          const summarySnap = await getDoc(fsDoc(fdb, 'stats', 'summary'));
+          if (summarySnap.exists()) {
+            const data = summarySnap.data();
+            const newStatsObj = {
+              totalVoters: Number(data.totalVoters) || 0,
+              hasVotedCount: Number(data.hasVotedCount) || 0,
+              turnoutPercent: data.turnoutPercent || '0%',
+              totalCandidates: Number(data.candidatesCount) || 2,
+            };
             setStats(newStatsObj);
             if (typeof window !== 'undefined') {
               localStorage.setItem('dash_stats', JSON.stringify(newStatsObj));
