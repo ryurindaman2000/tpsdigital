@@ -5,25 +5,29 @@ const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs } = require('firebase/firestore');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAl1LGhawFhGOFFGksAI-3ymfkL2_quO98",
-  authDomain: "jambulayam-517e1.firebaseapp.com",
-  projectId: "jambulayam-517e1",
-  storageBucket: "jambulayam-517e1.firebasestorage.app",
-  messagingSenderId: "115351959450",
-  appId: "1:115351959450:web:09bb24af4c747d2497ac23"
+  apiKey: "AIzaSyCEPPyx-quwp_uNBKrmrZCNo2vTkB7T5iQ",
+  authDomain: "magnumfilter900.firebaseapp.com",
+  projectId: "magnumfilter900",
+  storageBucket: "magnumfilter900.firebasestorage.app",
+  messagingSenderId: "476699516226",
+  appId: "1:476699516226:web:dd536a96b520b58e563cdb"
 };
 
 const app = initializeApp(firebaseConfig);
-// Menggunakan databaseId 'default' sesuai database aktif di Firebase Console
-const db = getFirestore(app, 'default');
+
+let db;
+try {
+  db = getFirestore(app, 'default');
+} catch {
+  db = getFirestore(app);
+}
 
 const COLLECTIONS = ["users", "candidates", "votes", "settings", "stats"];
 
 async function runBackup() {
-  console.log(`[INFO] Memulai Backup Firestore Project '${firebaseConfig.projectId}' (DB: default)...`);
+  console.log(`[INFO] Memulai Backup Firestore Project '${firebaseConfig.projectId}'...`);
   const backupData = {
     projectId: firebaseConfig.projectId,
-    databaseId: 'default',
     backupTime: new Date().toISOString(),
     collections: {},
   };
@@ -50,7 +54,7 @@ async function runBackup() {
     fs.mkdirSync(backupDir, { recursive: true });
   }
 
-  const filename = `backup-firestore-${nowStr}.json`;
+  const filename = `backup-${firebaseConfig.projectId}-${nowStr}.json`;
   const filePath = path.join(backupDir, filename);
 
   fs.writeFileSync(filePath, JSON.stringify(backupData, null, 2), 'utf-8');

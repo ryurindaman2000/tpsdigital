@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   LoaderCircle,
 } from 'lucide-react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { doc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function AdminDashboardPage() {
@@ -479,13 +479,9 @@ export default function AdminDashboardPage() {
     };
 
     let unsubVotes: (() => void) | null = null;
-    let unsubCands: (() => void) | null = null;
 
     try {
-      unsubVotes = onSnapshot(collection(db, 'votes'), () => {
-        triggerDebouncedFetch();
-      });
-      unsubCands = onSnapshot(collection(db, 'candidates'), () => {
+      unsubVotes = onSnapshot(doc(db, 'stats', 'summary'), () => {
         triggerDebouncedFetch();
       });
     } catch (e) {
@@ -495,7 +491,6 @@ export default function AdminDashboardPage() {
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       if (unsubVotes) unsubVotes();
-      if (unsubCands) unsubCands();
     };
   }, [router]);
 
