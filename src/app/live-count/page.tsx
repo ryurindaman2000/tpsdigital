@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Vote, TrendingUp, RefreshCw, CheckCircle2, ShieldCheck, ArrowRight, User } from 'lucide-react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface CandidateVote {
@@ -79,66 +79,26 @@ export default function LiveCountPage() {
           setStats(newStats);
           setCandidateVotes(json.data.candidateVotes);
         } else {
-          // Fallback: Ambil data Paslon & Perhitungan Suara langsung via Firebase Web SDK Client Browser
+          // Fallback: Ambil dokumen stats/summary via Firebase Web SDK Client Browser (Hemat Quota)
           try {
-            const { collection, getDocs } = await import('firebase/firestore');
+            const { doc: fsDoc, getDoc } = await import('firebase/firestore');
             const { db: fdb } = await import('@/lib/firebase');
 
-            const [candSnap, votesSnap, userSnap] = await Promise.all([
-              getDocs(collection(fdb, 'candidates')),
-              getDocs(collection(fdb, 'votes')),
-              getDocs(collection(fdb, 'users')),
-            ]);
-
-            const cands: any[] = [];
-            candSnap.forEach((d) => cands.push({ id: d.id, ...d.data() }));
-            cands.sort((a, b) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
-
-            const votesList: any[] = [];
-            votesSnap.forEach((d) => votesList.push(d.data()));
-
-            let totalVotersCount = 0;
-            let votedVotersCount = 0;
-            userSnap.forEach((d) => {
-              const u = d.data();
-              if (u.role === 'VOTER') {
-                totalVotersCount++;
-                if (u.hasVoted) votedVotersCount++;
+            const summarySnap = await getDoc(fsDoc(fdb, 'stats', 'summary'));
+            if (summarySnap.exists()) {
+              const data = summarySnap.data();
+              if (data.candidateVotesJson) {
+                const cands = JSON.parse(data.candidateVotesJson);
+                setCandidateVotes(cands);
+                setStats({
+                  totalVoters: Number(data.totalVoters) || 0,
+                  hasVotedCount: Number(data.hasVotedCount) || 0,
+                  turnoutPercent: data.turnoutPercent || '0%',
+                  abstainCount: 0,
+                });
+              } else {
+                setStats(newStats);
               }
-            });
-
-            const totalVotesInBox = votesList.length;
-            const finalVotedCount = Math.max(votedVotersCount, totalVotesInBox);
-
-            const candidateVotesRaw = cands.map((c: any) => {
-              const voteCount = votesList.filter(
-                (v: any) =>
-                  v.isValid !== false &&
-                  (String(v.candidateId) === String(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
-              ).length;
-
-              return {
-                id: c.id,
-                candidateNumber: Number(c.candidateNumber) || 1,
-                chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${c.candidateNumber}`,
-                viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
-                name: c.name || `Paslon 0${c.candidateNumber}`,
-                chairmanPhoto: c.chairmanPhoto || c.photoUrl,
-                viceChairmanPhoto: c.viceChairmanPhoto,
-                photoUrl: c.photoUrl || c.chairmanPhoto,
-                voteCount,
-                percentage: totalVotesInBox > 0 ? Math.round((voteCount / totalVotesInBox) * 100) : 0,
-              };
-            });
-
-            if (candidateVotesRaw.length > 0) {
-              setCandidateVotes(candidateVotesRaw);
-              setStats({
-                totalVoters: totalVotersCount,
-                hasVotedCount: finalVotedCount,
-                turnoutPercent: totalVotersCount > 0 ? `${Math.round((finalVotedCount / totalVotersCount) * 100)}%` : '0%',
-                abstainCount: 0,
-              });
             } else {
               setStats(newStats);
             }
@@ -214,14 +174,10 @@ export default function LiveCountPage() {
     };
 
     let unsubVotes: (() => void) | null = null;
-    let unsubCands: (() => void) | null = null;
 
     try {
-      // Cukup listen ke koleksi 'votes' saja (koleksi utama pencoblosan)
-      unsubVotes = onSnapshot(collection(db, 'votes'), () => {
-        triggerDebouncedFetch();
-      });
-      unsubCands = onSnapshot(collection(db, 'candidates'), () => {
+      // Listen HANYA ke 1 dokumen 'stats/summary' (Sangat Hemat Quota Reads!)
+      unsubVotes = onSnapshot(doc(db, 'stats', 'summary'), () => {
         triggerDebouncedFetch();
       });
     } catch (e) {
@@ -231,7 +187,6 @@ export default function LiveCountPage() {
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       if (unsubVotes) unsubVotes();
-      if (unsubCands) unsubCands();
     };
   }, []);
 

@@ -64,6 +64,14 @@ export async function POST(request: Request) {
           votedAt: new Date().toISOString(),
         });
 
+        // Update Dokumen Summary Firestore secara instan
+        try {
+          const { updateFirestoreSummaryOnVote } = await import('@/lib/firestore-data');
+          await updateFirestoreSummaryOnVote(targetCandidateNum, isAbstain);
+        } catch (sumErr) {
+          console.warn('[Update Summary Error]:', sumErr);
+        }
+
         await writeAuditLog(
           'VOTE_CAST',
           nim,
