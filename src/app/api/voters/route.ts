@@ -16,9 +16,20 @@ function generateRandomPassword(): string {
   return result;
 }
 
+let votersCache: { data: any[]; timestamp: number } | null = null;
+const CACHE_TTL_MS = 15000; // Cache 15 detik
+
+function invalidateVotersCache() {
+  votersCache = null;
+}
+
 // GET /api/voters - Ambil daftar pemilih (Firestore / PostgreSQL)
 export async function GET() {
   try {
+    if (votersCache && Date.now() - votersCache.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json({ success: true, data: votersCache.data });
+    }
+
     // 1. Ambil dari Firestore via REST (Instant < 30ms)
     try {
       const users = await getFsCollection('users');
@@ -36,6 +47,7 @@ export async function GET() {
         votedAt: v.votedAt || null,
         createdAt: v.createdAt || null,
       }));
+      votersCache = { data, timestamp: Date.now() };
       return NextResponse.json({ success: true, data });
     } catch (fsErr) {
       console.error('[Firestore Voters GET Fallback]:', fsErr);

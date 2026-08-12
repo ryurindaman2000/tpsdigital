@@ -5,11 +5,22 @@ import { getFirestoreStats } from '@/lib/firestore-data';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+let statsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 5000; // Cache 5 detik
+
 export async function GET() {
   try {
+    if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json({
+        success: true,
+        data: statsCache.data,
+      });
+    }
+
     // 1. Coba ambil statistik data langsung dari Firestore terlebih dahulu
     const firestoreStats = await getFirestoreStats();
     if (firestoreStats) {
+      statsCache = { data: firestoreStats, timestamp: Date.now() };
       return NextResponse.json({
         success: true,
         data: firestoreStats,
