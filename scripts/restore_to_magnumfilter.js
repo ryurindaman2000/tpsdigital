@@ -1,16 +1,17 @@
-// Script Import / Seed Data dari Backup JSON ke Firebase Project Baru (magnumfilter900)
+// Script Import / Seed Data dari Backup JSON ke Firebase Project (tumblerosca)
 const fs = require('fs');
 const path = require('path');
 const { initializeApp } = require('firebase/app');
 const { getFirestore, doc, setDoc, writeBatch } = require('firebase/firestore');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCEPPyx-quwp_uNBKrmrZCNo2vTkB7T5iQ",
-  authDomain: "magnumfilter900.firebaseapp.com",
-  projectId: "magnumfilter900",
-  storageBucket: "magnumfilter900.firebasestorage.app",
-  messagingSenderId: "476699516226",
-  appId: "1:476699516226:web:dd536a96b520b58e563cdb"
+  apiKey: "AIzaSyAvMNYA8nM-y3ymyvfSEyQn8TU-lbcAOhQ",
+  authDomain: "tumblerosca.firebaseapp.com",
+  projectId: "tumblerosca",
+  storageBucket: "tumblerosca.firebasestorage.app",
+  messagingSenderId: "437887562003",
+  appId: "1:437887562003:web:1ff95b649c4f2bf34f2ae6",
+  measurementId: "G-64HMBSVQCF"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -24,14 +25,24 @@ try {
 }
 
 async function restoreData() {
-  const backupFile = path.join(__dirname, '..', 'backups', 'backup-firestore-2026-08-12T02-19-41-602Z.json');
-  if (!fs.existsSync(backupFile)) {
-    console.error(`❌ [ERROR] File backup tidak ditemukan di: ${backupFile}`);
+  const backupDir = path.join(__dirname, '..', 'backups');
+  if (!fs.existsSync(backupDir)) {
+    console.error(`❌ [ERROR] Folder backups tidak ditemukan di: ${backupDir}`);
     process.exit(1);
   }
 
-  console.log(`[INFO] Membaca file backup: ${path.basename(backupFile)}...`);
-  const backupJson = JSON.parse(fs.readFileSync(backupFile, 'utf-8'));
+  const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json'));
+  if (files.length === 0) {
+    console.error(`❌ [ERROR] Tidak ada file backup JSON di folder: ${backupDir}`);
+    process.exit(1);
+  }
+
+  // Pilih file backup paling terbaru
+  files.sort().reverse();
+  const latestBackupFile = path.join(backupDir, files[0]);
+
+  console.log(`[INFO] Membaca file backup terbaru: ${files[0]}...`);
+  const backupJson = JSON.parse(fs.readFileSync(latestBackupFile, 'utf-8'));
   const collections = backupJson.collections || {};
 
   console.log(`[INFO] Memulai Seeding ke Firebase Project: '${firebaseConfig.projectId}'...`);
@@ -61,7 +72,7 @@ async function restoreData() {
   }
 
   console.log("\n--------------------------------------------------");
-  console.log(`🎉 SEEDING BERHASIL! Seluruh data backup telah di-import ke Firebase 'magnumfilter900'.`);
+  console.log(`🎉 SEEDING BERHASIL! Seluruh data backup telah di-import ke Firebase '${firebaseConfig.projectId}'.`);
   console.log("--------------------------------------------------");
   process.exit(0);
 }

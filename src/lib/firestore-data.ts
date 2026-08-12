@@ -1,81 +1,92 @@
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
+let recalculateLock: Promise<any> | null = null;
+
 export async function recalculateFirestoreSummary() {
-  try {
-    const [userSnap, candSnap, voteSnap] = await Promise.all([
-      getDocs(collection(db, 'users')),
-      getDocs(collection(db, 'candidates')),
-      getDocs(collection(db, 'votes')),
-    ]);
+  // Jika sedang ada proses kalkulasi yang berjalan, gunakan promise yang sama (Mencegah Stampede 700 Reads per Request!)
+  if (recalculateLock) {
+    return await recalculateLock;
+  }
 
-    const users: any[] = [];
-    userSnap.forEach((d) => users.push({ id: d.id, ...d.data() }));
+  recalculateLock = (async () => {
+    try {
+      const [userSnap, candSnap, voteSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'candidates')),
+        getDocs(collection(db, 'votes')),
+      ]);
 
-    const voters = users.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
-    const totalVoters = voters.length;
-    const hasVotedUserCount = voters.filter((u: any) => u.hasVoted === true).length;
+      const users: any[] = [];
+      userSnap.forEach((d) => users.push({ id: d.id, ...d.data() }));
 
-    const candidatesList: any[] = [];
-    candSnap.forEach((d) => candidatesList.push({ id: d.id, ...d.data() }));
-    candidatesList.sort((a: any, b: any) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
+      const voters = users.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
+      const totalVoters = voters.length;
+      const hasVotedUserCount = voters.filter((u: any) => u.hasVoted === true).length;
 
-    const votesList: any[] = [];
-    voteSnap.forEach((d) => votesList.push(d.data()));
+      const candidatesList: any[] = [];
+      candSnap.forEach((d) => candidatesList.push({ id: d.id, ...d.data() }));
+      candidatesList.sort((a: any, b: any) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
 
-    const candidateVotesRaw = candidatesList.map((c: any) => {
-      const voteCount = votesList.filter(
-        (v: any) =>
-          v.isValid !== false &&
-          (Number(v.candidateId) === Number(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
-      ).length;
+      const votesList: any[] = [];
+      voteSnap.forEach((d) => votesList.push(d.data()));
+
+      // SIMPAN HANYA FIELD RINGKAS (Tanpa Base64 Foto raksasa agar payload < 1 KB)
+      const candidateVotesRaw = candidatesList.map((c: any) => {
+        const voteCount = votesList.filter(
+          (v: any) =>
+            v.isValid !== false &&
+            (Number(v.candidateId) === Number(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
+        ).length;
+
+        return {
+          id: String(c.id),
+          candidateNumber: Number(c.candidateNumber) || 1,
+          chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${c.candidateNumber}`,
+          viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
+          name: c.name || `Paslon 0${c.candidateNumber}`,
+          voteCount,
+        };
+      });
+
+      const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + c.voteCount, 0);
+      const hasVotedCount = Math.max(hasVotedUserCount, totalVotesInBox);
+      const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
+
+      const candidateVotes = candidateVotesRaw.map((c: any) => ({
+        ...c,
+        percentage: totalVotesInBox > 0 ? Math.round((c.voteCount / totalVotesInBox) * 100) : 0,
+      }));
+
+      const summaryPayload = {
+        totalVoters,
+        hasVotedCount,
+        turnoutPercent,
+        abstainCount: 0,
+        candidatesCount: candidatesList.length,
+        candidateVotesJson: JSON.stringify(candidateVotes),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await setDoc(doc(db, 'stats', 'summary'), summaryPayload, { merge: true });
 
       return {
-        id: String(c.id),
-        candidateNumber: Number(c.candidateNumber) || 1,
-        chairmanName: c.chairmanName || (c.name ? c.name.split('&')[0]?.trim() : '') || c.name || `Paslon 0${c.candidateNumber}`,
-        viceChairmanName: c.viceChairmanName || (c.name && c.name.includes('&') ? c.name.split('&')[1]?.trim() : ''),
-        name: c.name || `Paslon 0${c.candidateNumber}`,
-        chairmanPhoto: c.chairmanPhoto || c.photoUrl || null,
-        viceChairmanPhoto: c.viceChairmanPhoto || null,
-        photoUrl: c.photoUrl || c.chairmanPhoto || null,
-        voteCount,
+        totalVoters,
+        hasVotedCount,
+        turnoutPercent,
+        abstainCount: 0,
+        candidatesCount: candidatesList.length,
+        candidateVotes,
       };
-    });
+    } catch (error) {
+      console.error('[Recalculate Firestore Summary Error]:', error);
+      return null;
+    } finally {
+      recalculateLock = null;
+    }
+  })();
 
-    const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + c.voteCount, 0);
-    const hasVotedCount = Math.max(hasVotedUserCount, totalVotesInBox);
-    const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
-
-    const candidateVotes = candidateVotesRaw.map((c: any) => ({
-      ...c,
-      percentage: totalVotesInBox > 0 ? Math.round((c.voteCount / totalVotesInBox) * 100) : 0,
-    }));
-
-    const summaryPayload = {
-      totalVoters,
-      hasVotedCount,
-      turnoutPercent,
-      abstainCount: 0,
-      candidatesCount: candidatesList.length,
-      candidateVotesJson: JSON.stringify(candidateVotes),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await setDoc(doc(db, 'stats', 'summary'), summaryPayload, { merge: true });
-
-    return {
-      totalVoters,
-      hasVotedCount,
-      turnoutPercent,
-      abstainCount: 0,
-      candidatesCount: candidatesList.length,
-      candidateVotes,
-    };
-  } catch (error) {
-    console.error('[Recalculate Firestore Summary Error]:', error);
-    return null;
-  }
+  return await recalculateLock;
 }
 
 export async function getFirestoreStats() {
@@ -91,7 +102,6 @@ export async function getFirestoreStats() {
           const totalVoters = Number(summaryDoc.totalVoters) || 0;
           const hasVotedCount = Number(summaryDoc.hasVotedCount) || 0;
 
-          // Jika totalVoters > 0 dan valid, gunakan cache summary (Sangat Hemat Kuota Reads!)
           if (totalVoters > 0) {
             const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + (Number(c.voteCount) || 0), 0);
             const finalVotedCount = Math.max(hasVotedCount, totalVotesInBox);
@@ -119,7 +129,7 @@ export async function getFirestoreStats() {
       }
     }
 
-    // Jika belum ada dokumen summary atau totalVoters masih 0, kalkulasi ulang & simpan summary
+    // Jika dokumen summary belum ada atau totalVoters masih 0, jalankan kalkulasi awal 1 kali
     return await recalculateFirestoreSummary();
   } catch (error) {
     console.error('[Firestore Stats Error]:', error);
