@@ -14,21 +14,10 @@ export async function GET() {
 
       const candidatesSnap = await getDocs(collection(fdb, 'candidates'));
       if (!candidatesSnap.empty) {
-        const votesSnap = await getDocs(collection(fdb, 'votes'));
-        const votesList: any[] = [];
-        votesSnap.forEach((v) => {
-          if (v.data().isValid !== false) votesList.push(v.data());
-        });
-
         const fsCandidates: any[] = [];
         candidatesSnap.forEach((docSnap) => {
           const c = docSnap.data();
-          const votesCount = votesList.filter(
-            (v: any) =>
-              Number(v.candidateId) === Number(docSnap.id) ||
-              Number(v.candidateId) === Number(c.candidateNumber)
-          ).length;
-          fsCandidates.push({ id: docSnap.id, ...c, votesCount });
+          fsCandidates.push({ id: docSnap.id, ...c });
         });
 
         fsCandidates.sort((a, b) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
