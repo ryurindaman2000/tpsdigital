@@ -101,28 +101,21 @@ export default function AdminDashboardPage() {
 
       // Fallback Langsung via Client-Side Firebase Web SDK
       try {
-        const { collection, getDocs } = await import('firebase/firestore');
+        const { collection, getDocs, doc, getDoc } = await import('firebase/firestore');
         const { db: fdb } = await import('@/lib/firebase');
 
-        const [candSnap, votesSnap, userSnap, setSnap] = await Promise.all([
+        const [candSnap, docSnap] = await Promise.all([
           getDocs(collection(fdb, 'candidates')),
-          getDocs(collection(fdb, 'votes')),
-          getDocs(collection(fdb, 'users')),
-          getDocs(collection(fdb, 'settings')),
+          getDoc(doc(fdb, 'stats', 'summary')),
         ]);
 
-        if (!setSnap.empty) {
-          const setObj = setSnap.docs[0].data();
-          if (setObj.kopUrl) {
-            setKopUrl(setObj.kopUrl);
-            if (typeof window !== 'undefined') localStorage.setItem('app_kop', setObj.kopUrl);
-          }
+        let summaryDoc = docSnap.exists() ? docSnap.data() : null;
+        let votesList: any[] = [];
+        if (summaryDoc && summaryDoc.candidateVotesJson) {
+          try {
+            votesList = JSON.parse(summaryDoc.candidateVotesJson);
+          } catch { }
         }
-
-        const votesList: any[] = [];
-        votesSnap.forEach((v) => {
-          if (v.data().isValid !== false) votesList.push(v.data());
-        });
 
         const candsMap = new Map();
         candSnap.forEach((d) => {
@@ -145,17 +138,10 @@ export default function AdminDashboardPage() {
         const sortedCands = Array.from(candsMap.values()).sort((a, b) => a.candidateNumber - b.candidateNumber);
         if (sortedCands.length > 0) setCandidatesList(sortedCands);
 
-        let totVoters = 0;
-        let votedVoters = 0;
-        userSnap.forEach((d) => {
-          const u = d.data();
-          if (u.role === 'VOTER') {
-            totVoters++;
-            if (u.hasVoted) votedVoters++;
-          }
-        });
+        let totVoters = summaryDoc?.totalVoters ? Number(summaryDoc.totalVoters) : 628;
+        let votedVoters = summaryDoc?.hasVotedCount ? Number(summaryDoc.hasVotedCount) : 0;
 
-        const totalVotesBox = votesList.length;
+        const totalVotesBox = votesList.reduce((acc: number, c: any) => acc + (Number(c.voteCount) || 0), 0);
         const finalHasVoted = Math.max(votedVoters, totalVotesBox);
         const newStatsObj = {
           totalVoters: totVoters,

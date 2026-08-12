@@ -11,34 +11,33 @@ export async function recalculateFirestoreSummary() {
 
   recalculateLock = (async () => {
     try {
-      const [userSnap, candSnap, voteSnap] = await Promise.all([
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'candidates')),
-        getDocs(collection(db, 'votes')),
-      ]);
-
-      const users: any[] = [];
-      userSnap.forEach((d) => users.push({ id: d.id, ...d.data() }));
-
-      const voters = users.filter((u: any) => u.role === 'VOTER' || (!u.role && u.nim !== 'admin'));
-      const totalVoters = voters.length;
-      const hasVotedUserCount = voters.filter((u: any) => u.hasVoted === true).length;
+      // BACA HANYA KANDIDAT (Hanya 2-3 dokumen, BUKAN 628 users & votes!)
+      const candSnap = await getDocs(collection(db, 'candidates'));
 
       const candidatesList: any[] = [];
       candSnap.forEach((d) => candidatesList.push({ id: d.id, ...d.data() }));
       candidatesList.sort((a: any, b: any) => (Number(a.candidateNumber) || 0) - (Number(b.candidateNumber) || 0));
 
-      const votesList: any[] = [];
-      voteSnap.forEach((d) => votesList.push(d.data()));
+      // Cek dokumen summary yang sudah ada untuk mengambil totalVoters & voteCount tanpa scan ulang
+      const summaryRef = doc(db, 'stats', 'summary');
+      const existingSummarySnap = await getDoc(summaryRef);
+      let existingData = existingSummarySnap.exists() ? existingSummarySnap.data() : null;
 
-      // SIMPAN HANYA FIELD RINGKAS (Tanpa Base64 Foto raksasa agar payload < 1 KB)
+      let existingVoteMap: Record<string, number> = {};
+      if (existingData && existingData.candidateVotesJson) {
+        try {
+          const parsed = JSON.parse(existingData.candidateVotesJson);
+          parsed.forEach((c: any) => {
+            existingVoteMap[String(c.candidateNumber)] = Number(c.voteCount) || 0;
+            existingVoteMap[String(c.id)] = Number(c.voteCount) || 0;
+          });
+        } catch { }
+      }
+
+      const totalVoters = existingData?.totalVoters ? Number(existingData.totalVoters) : 628;
+
       const candidateVotesRaw = candidatesList.map((c: any) => {
-        const voteCount = votesList.filter(
-          (v: any) =>
-            v.isValid !== false &&
-            (Number(v.candidateId) === Number(c.id) || Number(v.candidateId) === Number(c.candidateNumber))
-        ).length;
-
+        const voteCount = existingVoteMap[String(c.candidateNumber)] || existingVoteMap[String(c.id)] || 0;
         return {
           id: String(c.id),
           candidateNumber: Number(c.candidateNumber) || 1,
@@ -50,7 +49,7 @@ export async function recalculateFirestoreSummary() {
       });
 
       const totalVotesInBox = candidateVotesRaw.reduce((acc: number, c: any) => acc + c.voteCount, 0);
-      const hasVotedCount = Math.max(hasVotedUserCount, totalVotesInBox);
+      const hasVotedCount = Math.max(existingData?.hasVotedCount || 0, totalVotesInBox);
       const turnoutPercent = totalVoters > 0 ? `${Math.round((hasVotedCount / totalVoters) * 100)}%` : '0%';
 
       const candidateVotes = candidateVotesRaw.map((c: any) => ({
@@ -68,7 +67,7 @@ export async function recalculateFirestoreSummary() {
         updatedAt: new Date().toISOString(),
       };
 
-      await setDoc(doc(db, 'stats', 'summary'), summaryPayload, { merge: true });
+      await setDoc(summaryRef, summaryPayload, { merge: true });
 
       return {
         totalVoters,
