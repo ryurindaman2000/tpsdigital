@@ -40,15 +40,25 @@ export default function LiveCountPage() {
   // Fetch Pengaturan & Data Live Count sekaligus secara PARALEL
   const fetchLiveStats = async () => {
     try {
-      const [settingsRes, statsRes] = await Promise.all([
+      const [settingsRes, statsRes, candidatesRes] = await Promise.all([
         fetch('/api/settings', { cache: 'no-store' }),
         fetch('/api/vote/stats', { cache: 'no-store' }),
+        fetch('/api/candidates', { cache: 'no-store' }),
       ]);
 
-      const [settingsJson, json] = await Promise.all([
+      const [settingsJson, json, candidatesJson] = await Promise.all([
         settingsRes.json(),
         statsRes.json(),
+        candidatesRes.json(),
       ]);
+
+      const candidatesMap: Record<string, any> = {};
+      if (candidatesJson.success && Array.isArray(candidatesJson.data)) {
+        candidatesJson.data.forEach((c: any) => {
+          candidatesMap[String(c.candidateNumber)] = c;
+          candidatesMap[String(c.id)] = c;
+        });
+      }
 
       if (settingsJson.success && settingsJson.data) {
         if (settingsJson.data.appName) {
@@ -75,9 +85,22 @@ export default function LiveCountPage() {
           abstainCount: json.data.abstainCount || 0,
         };
 
-        if (Array.isArray(json.data.candidateVotes) && json.data.candidateVotes.length > 0) {
+        const rawCands = Array.isArray(json.data.candidateVotes) ? json.data.candidateVotes : [];
+        const enrichedCands = rawCands.map((c: any) => {
+          const detail = candidatesMap[String(c.candidateNumber)] || candidatesMap[String(c.id)] || {};
+          return {
+            ...c,
+            chairmanPhoto: c.chairmanPhoto || detail.chairmanPhoto || detail.photoUrl,
+            viceChairmanPhoto: c.viceChairmanPhoto || detail.viceChairmanPhoto,
+            photoUrl: c.photoUrl || detail.photoUrl || detail.chairmanPhoto,
+            chairmanName: c.chairmanName || detail.chairmanName,
+            viceChairmanName: c.viceChairmanName || detail.viceChairmanName,
+          };
+        });
+
+        if (enrichedCands.length > 0) {
           setStats(newStats);
-          setCandidateVotes(json.data.candidateVotes);
+          setCandidateVotes(enrichedCands);
         } else {
           // Fallback: Ambil dokumen stats/summary via Firebase Web SDK Client Browser (Hemat Quota)
           try {
@@ -89,7 +112,18 @@ export default function LiveCountPage() {
               const data = summarySnap.data();
               if (data.candidateVotesJson) {
                 const cands = JSON.parse(data.candidateVotesJson);
-                setCandidateVotes(cands);
+                const enrichedFallback = cands.map((c: any) => {
+                  const detail = candidatesMap[String(c.candidateNumber)] || candidatesMap[String(c.id)] || {};
+                  return {
+                    ...c,
+                    chairmanPhoto: c.chairmanPhoto || detail.chairmanPhoto || detail.photoUrl,
+                    viceChairmanPhoto: c.viceChairmanPhoto || detail.viceChairmanPhoto,
+                    photoUrl: c.photoUrl || detail.photoUrl || detail.chairmanPhoto,
+                    chairmanName: c.chairmanName || detail.chairmanName,
+                    viceChairmanName: c.viceChairmanName || detail.viceChairmanName,
+                  };
+                });
+                setCandidateVotes(enrichedFallback);
                 setStats({
                   totalVoters: Number(data.totalVoters) || 0,
                   hasVotedCount: Number(data.hasVotedCount) || 0,

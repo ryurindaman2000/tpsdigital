@@ -5,12 +5,13 @@ const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs } = require('firebase/firestore');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCEPPyx-quwp_uNBKrmrZCNo2vTkB7T5iQ",
-  authDomain: "magnumfilter900.firebaseapp.com",
-  projectId: "magnumfilter900",
-  storageBucket: "magnumfilter900.firebasestorage.app",
-  messagingSenderId: "476699516226",
-  appId: "1:476699516226:web:dd536a96b520b58e563cdb"
+  apiKey: "AIzaSyAvMNYA8nM-y3ymyvfSEyQn8TU-lbcAOhQ",
+  authDomain: "tumblerosca.firebaseapp.com",
+  projectId: "tumblerosca",
+  storageBucket: "tumblerosca.firebasestorage.app",
+  messagingSenderId: "437887562003",
+  appId: "1:437887562003:web:1ff95b649c4f2bf34f2ae6",
+  measurementId: "G-64HMBSVQCF"
 };
 
 const app = initializeApp(firebaseConfig);

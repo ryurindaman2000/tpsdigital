@@ -1,17 +1,17 @@
-// Script Import / Seed Data dari Backup JSON ke Firebase Project (tumblerosca)
+// Script Import / Seed Data dari Backup JSON ke Firebase Project (ikanpindang-57da4)
 const fs = require('fs');
 const path = require('path');
 const { initializeApp } = require('firebase/app');
 const { getFirestore, doc, setDoc, writeBatch } = require('firebase/firestore');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAvMNYA8nM-y3ymyvfSEyQn8TU-lbcAOhQ",
-  authDomain: "tumblerosca.firebaseapp.com",
-  projectId: "tumblerosca",
-  storageBucket: "tumblerosca.firebasestorage.app",
-  messagingSenderId: "437887562003",
-  appId: "1:437887562003:web:1ff95b649c4f2bf34f2ae6",
-  measurementId: "G-64HMBSVQCF"
+  apiKey: "AIzaSyD4Xn0WCoIAZUVO2_hzb_Gv12UNGiiaKNY",
+  authDomain: "ikanpindang-57da4.firebaseapp.com",
+  projectId: "ikanpindang-57da4",
+  storageBucket: "ikanpindang-57da4.firebasestorage.app",
+  messagingSenderId: "441425172849",
+  appId: "1:441425172849:web:8b29af21729ebb8b973ed0",
+  measurementId: "G-3RGBDGS9ZW"
 };
 
 const app = initializeApp(firebaseConfig);
